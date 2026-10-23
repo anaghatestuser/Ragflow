@@ -442,7 +442,9 @@ class LmStudioCV(GptV4):
         if not base_url:
             raise ValueError("Local llm url cannot be None")
         base_url = urljoin(base_url, "v1")
+        # LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
         self.client = OpenAI(api_key="lm-studio", base_url=base_url)
+        # LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
         self.async_client = AsyncOpenAI(api_key="lm-studio", base_url=base_url)
         self.model_name = model_name
         self.lang = lang
