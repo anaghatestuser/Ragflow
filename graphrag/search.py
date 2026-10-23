@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -35,15 +53,74 @@ class KGSearch(Dealer):
     def _chat(self, llm_bdl, system, history, gen_conf):
         response = get_llm_cache(llm_bdl.llm_name, system, history, gen_conf)
         if response:
+            # LINEAJE: runtime guardrail checks `response` as it flows from the agent to the user interface, before it leaves the application (in KGSearch._chat).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:18b5590ec62c9792d9b5091292dabf43af3ae20da730f0b11129b68716a34aa7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:18b5590ec62c9792d9b5091292dabf43af3ae20da730f0b11129b68716a34aa7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 38, 'function': 'KGSearch._chat'}, 'file': 'graphrag/search.py', 'line': 38, 'function': '_chat', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                response = _gr_client.enforce(_gr_site, response, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return response
+        # LINEAJE: runtime guardrail checks `system` as it flows from the agent to the LLM, before it is sent to the model (in KGSearch._chat).
+        #   Detected: this statement moves data from the agent to the LLM with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `system` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6c2a327f14a998fb1b70a517aec85ba7156e0777e6ddaba1921f2291c99c28dc'
+        _lineaje_system_evidence = {'system': system, 'model': getattr(_lineaje_load_gr_client(), 'current_model', lambda _f: '')(__file__), 'project': 'tree'}
+        _gr_client = _lineaje_load_gr_client()
+        _lineaje_interaction_id = _gr_client.new_interaction_id()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6c2a327f14a998fb1b70a517aec85ba7156e0777e6ddaba1921f2291c99c28dc', phase='pre_model', boundary={'source': 'agent_message', 'sink': 'model'}, fail_mode='BLOCK', source_type='agent', destination_type='llm', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 39, 'function': 'KGSearch._chat'}, 'file': 'graphrag/search.py', 'line': 39, 'function': '_chat', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True}, interaction_id=_lineaje_interaction_id)
+        try:
+            _lineaje_system_evidence = _gr_client.enforce(_gr_site, _lineaje_system_evidence, content_type='application/json')
+            system = _lineaje_system_evidence.get('system', system) if isinstance(_lineaje_system_evidence, dict) else system
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            raise
         response = llm_bdl.chat(system, history, gen_conf)
+        # LINEAJE: runtime guardrail checks `response` as it flows from the LLM to the agent, after the model replies (in KGSearch._chat).
+        #   Detected: this statement moves data from the LLM to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_011, AI_DAT_SEC_025, AI_DAT_SEC_027, AI_DAT_SEC_029; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3f77dc166574ff1c9ebccd45c1f3d9cd3ef608883616d9625a4aa20e03b1f36b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3f77dc166574ff1c9ebccd45c1f3d9cd3ef608883616d9625a4aa20e03b1f36b', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='llm', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 39, 'function': 'KGSearch._chat'}, 'file': 'graphrag/search.py', 'line': 39, 'function': '_chat', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True}, interaction_id=locals().get('_lineaje_interaction_id'))
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=39)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         if response.find("**ERROR**") >= 0:
             raise Exception(response)
         set_llm_cache(llm_bdl.llm_name, system, response, history, gen_conf)
+        # LINEAJE: runtime guardrail checks `response` as it flows from the agent to the user interface, before it leaves the application (in KGSearch._chat).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0f967e91436ccb82dc2f806c4e1fd1095124add5e8c1688ba2226296c3d563ba'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0f967e91436ccb82dc2f806c4e1fd1095124add5e8c1688ba2226296c3d563ba', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 43, 'function': 'KGSearch._chat'}, 'file': 'graphrag/search.py', 'line': 43, 'function': '_chat', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return response
 
     def query_rewrite(self, llm, question, idxnms, kb_ids):
         ty2ents = get_entity_type2samples(idxnms, kb_ids)
+        # LINEAJE: runtime guardrail checks `ty2ents` as it flows from the agent to an external endpoint, before it leaves the application (in KGSearch.query_rewrite).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `ty2ents` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:426f61dd604dc43a341441ec91a3ab24b696183154897824a04f44c0515b8cd7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:426f61dd604dc43a341441ec91a3ab24b696183154897824a04f44c0515b8cd7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 47, 'function': 'KGSearch.query_rewrite'}, 'file': 'graphrag/search.py', 'line': 47, 'function': 'query_rewrite', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            ty2ents = _gr_client.enforce(_gr_site, ty2ents, content_type='application/json', variable_name='ty2ents', source_file=__file__, before_line=47)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         hint_prompt = PROMPTS["minirag_query2kwd"].format(query=question,
                                                           TYPE_POOL=json.dumps(ty2ents, ensure_ascii=False, indent=2))
         result = self._chat(llm, hint_prompt, [{"role": "user", "content": "Output:"}], {})
@@ -62,7 +139,20 @@ class KGSearch(Dealer):
                 return type_keywords, entities_from_query
             # Handle parsing error
             except Exception as e:
-                logging.exception(f"JSON parsing error: {result} -> {e}")
+                _lineaje_payload = f"JSON parsing error: {result} -> {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.query_rewrite).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:8f7aed1c087641ba979f1956956bb82643fbf09daeb5774206ac77f1204e0ee9'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8f7aed1c087641ba979f1956956bb82643fbf09daeb5774206ac77f1204e0ee9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 65, 'function': 'KGSearch.query_rewrite'}, 'file': 'graphrag/search.py', 'line': 65, 'function': 'query_rewrite', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.exception(_lineaje_payload)
                 raise e
 
     def _ent_info_from_(self, es_res, sim_thr=0.3):
@@ -83,6 +173,18 @@ class KGSearch(Dealer):
                 "n_hop_ents": json.loads(ent.get("n_hop_with_weight", "[]")),
                 "description": ent.get("content_with_weight", "{}")
             }
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in KGSearch._ent_info_from_).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1f88dd23fcda0a8a88a63282c63b36526f9c6b29477428abd8b791a8a573a2ab'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1f88dd23fcda0a8a88a63282c63b36526f9c6b29477428abd8b791a8a573a2ab', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 86, 'function': 'KGSearch._ent_info_from_'}, 'file': 'graphrag/search.py', 'line': 86, 'function': '_ent_info_from_', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     def _relation_info_from_(self, es_res, sim_thr=0.3):
@@ -102,6 +204,18 @@ class KGSearch(Dealer):
                 "pagerank": get_float(ent.get("weight_int", 0)),
                 "description": ent["content_with_weight"]
             }
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in KGSearch._relation_info_from_).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ac3e484264dbd2579e97e1a07ee5b96d2ada98c1bc02f77a97b43f37bff7ddc8'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ac3e484264dbd2579e97e1a07ee5b96d2ada98c1bc02f77a97b43f37bff7ddc8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 105, 'function': 'KGSearch._relation_info_from_'}, 'file': 'graphrag/search.py', 'line': 105, 'function': '_relation_info_from_', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     def get_relevant_ents_by_keywords(self, keywords, filters, idxnms, kb_ids, emb_mdl, sim_thr=0.3, N=56):
@@ -159,8 +273,33 @@ class KGSearch(Dealer):
         ty_kwds = []
         try:
             ty_kwds, ents = self.query_rewrite(llm, qst, [index_name(tid) for tid in tenant_ids], kb_ids)
-            logging.info(f"Q: {qst}, Types: {ty_kwds}, Entities: {ents}")
+            _lineaje_payload = f"Q: {qst}, Types: {ty_kwds}, Entities: {ents}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b8f071a2feb7b1ecafc7eb8483c22e052dd79f82f8cdec1589c370d829a5ad74'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b8f071a2feb7b1ecafc7eb8483c22e052dd79f82f8cdec1589c370d829a5ad74', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 162, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 162, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:09ee9f48d806bd20dc320a6d48dc9ba359922e00e183be81d1452ea6365db86d'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:09ee9f48d806bd20dc320a6d48dc9ba359922e00e183be81d1452ea6365db86d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 164, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 164, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
             ents = [qst]
             pass
@@ -172,7 +311,20 @@ class KGSearch(Dealer):
         for _, ent in ents_from_query.items():
             nhops = ent.get("n_hop_ents", [])
             if not isinstance(nhops, list):
-                logging.warning(f"Abnormal n_hop_ents: {nhops}")
+                _lineaje_payload = f"Abnormal n_hop_ents: {nhops}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:12f34643111289c4eedfd5fddfa91c837519deb6c6d3698903493a5d810b770f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:12f34643111289c4eedfd5fddfa91c837519deb6c6d3698903493a5d810b770f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 175, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 175, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 continue
             for nbr in nhops:
                 path = nbr["path"]
@@ -185,10 +337,62 @@ class KGSearch(Dealer):
                         nhop_pathes[(f, t)]["sim"] = ent["sim"] / (2 + i)
                     nhop_pathes[(f, t)]["pagerank"] = wts[i]
 
-        logging.info("Retrieved entities: {}".format(list(ents_from_query.keys())))
-        logging.info("Retrieved relations: {}".format(list(rels_from_txt.keys())))
-        logging.info("Retrieved entities from types({}): {}".format(ty_kwds, list(ents_from_types.keys())))
-        logging.info("Retrieved N-hops: {}".format(list(nhop_pathes.keys())))
+        _lineaje_payload = "Retrieved entities: {}".format(list(ents_from_query.keys()))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:d7818807793676ebbb3647788fb0ba70795b810948131e1a1e7dec7eccf4f1e1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d7818807793676ebbb3647788fb0ba70795b810948131e1a1e7dec7eccf4f1e1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 188, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 188, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
+        _lineaje_payload = "Retrieved relations: {}".format(list(rels_from_txt.keys()))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:eb2998e62782d1e6bb9c0029efb5755ede60b3770d1fea433c4116d9b109b9db'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:eb2998e62782d1e6bb9c0029efb5755ede60b3770d1fea433c4116d9b109b9db', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 189, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 189, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
+        _lineaje_payload = "Retrieved entities from types({}): {}".format(ty_kwds, list(ents_from_types.keys()))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0b4fb0e2a0f62185b75f9a6f672dadaf2a11050abf454f135c56a4dd152e66b5'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0b4fb0e2a0f62185b75f9a6f672dadaf2a11050abf454f135c56a4dd152e66b5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 190, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 190, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
+        _lineaje_payload = "Retrieved N-hops: {}".format(list(nhop_pathes.keys()))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in KGSearch.retrieval).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1b787049c30f2307186265feccc92ac9dd938a4d70363150a39f40fea7f056f3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1b787049c30f2307186265feccc92ac9dd938a4d70363150a39f40fea7f056f3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/search.py', 'line': 191, 'function': 'KGSearch.retrieval'}, 'file': 'graphrag/search.py', 'line': 191, 'function': 'retrieval', 'agent_name': 'KGSearch', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
         # P(E|Q) => P(E) * P(Q|E) => pagerank * sim
         for ent in ents_from_types.keys():
