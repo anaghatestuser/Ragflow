@@ -1,4 +1,22 @@
 """Dropbox connector"""
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import logging
 from datetime import timezone
@@ -45,7 +63,20 @@ class DropboxConnector(LoadConnector, PollConnector):
         try:
             self.dropbox_client.files_list_folder(path="", limit=1)
         except AuthError as e:
-            logger.exception("[Dropbox]: Failed to validate Dropbox credentials")
+            _lineaje_payload = "[Dropbox]: Failed to validate Dropbox credentials"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DropboxConnector.validate_connector_settings).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3f625775bfe57821547b125d5e9f410f6b45adf1ee1de07acc5559db0b89194f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3f625775bfe57821547b125d5e9f410f6b45adf1ee1de07acc5559db0b89194f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/dropbox_connector.py', 'line': 48, 'function': 'DropboxConnector.validate_connector_settings'}, 'file': 'common/data_source/dropbox_connector.py', 'line': 48, 'function': 'validate_connector_settings', 'agent_name': 'DropboxConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.exception(_lineaje_payload)
             raise ConnectorValidationError(f"Dropbox credential is invalid: {e}")
         except ApiError as e:
             if e.error is not None and "insufficient_permissions" in str(e.error).lower():
@@ -74,7 +105,20 @@ class DropboxConnector(LoadConnector, PollConnector):
             link_metadata = self.dropbox_client.sharing_create_shared_link_with_settings(path)
             return link_metadata.url
         except ApiError as err:
-            logger.exception(f"[Dropbox]: Failed to create a shared link for {path}: {err}")
+            _lineaje_payload = f"[Dropbox]: Failed to create a shared link for {path}: {err}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DropboxConnector._get_shared_link).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9469c919b2464962c51b88138868d87e1bbbd4d2d398ded16e3c11babe9ff8d7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9469c919b2464962c51b88138868d87e1bbbd4d2d398ded16e3c11babe9ff8d7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/dropbox_connector.py', 'line': 77, 'function': 'DropboxConnector._get_shared_link'}, 'file': 'common/data_source/dropbox_connector.py', 'line': 77, 'function': '_get_shared_link', 'agent_name': 'DropboxConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.exception(_lineaje_payload)
             return ""
 
     def _yield_files_recursive(
@@ -168,7 +212,20 @@ class DropboxConnector(LoadConnector, PollConnector):
                         downloaded_file = self._download_file(entry.path_display)
                         all_files.append((entry, downloaded_file))
                     except Exception:
-                        logger.exception(f"[Dropbox]: Error downloading file {entry.path_display}")
+                        _lineaje_payload = f"[Dropbox]: Error downloading file {entry.path_display}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DropboxConnector._collect_files_recursive).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:3ede6084a721cf8ab67910fc9bd5ed5e58bcbadbe04d8f4b1bc0b098d66aac47'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3ede6084a721cf8ab67910fc9bd5ed5e58bcbadbe04d8f4b1bc0b098d66aac47', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/dropbox_connector.py', 'line': 171, 'function': 'DropboxConnector._collect_files_recursive'}, 'file': 'common/data_source/dropbox_connector.py', 'line': 171, 'function': '_collect_files_recursive', 'agent_name': 'DropboxConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        logger.exception(_lineaje_payload)
                         continue
 
                 elif isinstance(entry, FolderMetadata):
