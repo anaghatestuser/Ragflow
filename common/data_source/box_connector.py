@@ -132,6 +132,7 @@ class BoxConnector(LoadConnector, PollConnector):
 # app = Flask(__name__)
 
 # AUTH = BoxOAuth(
+# LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
 #     OAuthConfig(client_id="8suvn9ik7qezsq2dub0ye6ubox61081z", client_secret="QScvhLgBcZrb2ck1QP1ovkutpRhI2QcN")
 # )
 
