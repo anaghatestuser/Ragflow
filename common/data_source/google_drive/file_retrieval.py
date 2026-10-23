@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 import logging
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
@@ -40,6 +58,18 @@ def generate_time_range_filter(
     if end is not None:
         time_stop = datetime.fromtimestamp(end, tz=timezone.utc).isoformat()
         time_range_filter += f" and {GoogleFields.MODIFIED_TIME.value} <= '{time_stop}'"
+    # LINEAJE: runtime guardrail checks `time_range_filter` as it flows from the agent to the user interface, before it leaves the application (in generate_time_range_filter).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `time_range_filter` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:8197ea9ed598be69eb04126a964360ae2d6b44204c1ad772181bd6329839e889'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8197ea9ed598be69eb04126a964360ae2d6b44204c1ad772181bd6329839e889', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 43, 'function': 'generate_time_range_filter'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 43, 'function': 'generate_time_range_filter', 'agent_name': 'generate_time_range_filter', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        time_range_filter = _gr_client.enforce(_gr_site, time_range_filter, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return time_range_filter
 
 
@@ -117,9 +147,35 @@ def crawl_folders_for_files(
     """
     This function starts crawling from any folder. It is slower though.
     """
-    logging.info("Entered crawl_folders_for_files with parent_id: " + parent_id)
+    _lineaje_payload = "Entered crawl_folders_for_files with parent_id: " + parent_id
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:8d76ef7e06742c9e944072544c61529b3a248d27ea5322d4400746ee7a6785fc'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8d76ef7e06742c9e944072544c61529b3a248d27ea5322d4400746ee7a6785fc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 120, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 120, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     if parent_id not in traversed_parent_ids:
-        logging.info("Parent id not in traversed parent ids, getting files")
+        _lineaje_payload = "Parent id not in traversed parent ids, getting files"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0a6ea80b32419eeb1df9634f9f2bfdf7296343feb27c2a30d3c1f084f2c5f7f2'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0a6ea80b32419eeb1df9634f9f2bfdf7296343feb27c2a30d3c1f084f2c5f7f2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 122, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 122, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         found_files = False
         file = {}
         try:
@@ -130,7 +186,20 @@ def crawl_folders_for_files(
                 start=start,
                 end=end,
             ):
-                logging.info(f"Found file: {file['name']}, user email: {user_email}")
+                _lineaje_payload = f"Found file: {file['name']}, user email: {user_email}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:6065282b96025ac44df83fecd4a8693fd240a415392aae66fca21cf40364cb2f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6065282b96025ac44df83fecd4a8693fd240a415392aae66fca21cf40364cb2f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 133, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 133, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 found_files = True
                 yield RetrievedDriveFile(
                     drive_file=file,
@@ -149,9 +218,35 @@ def crawl_folders_for_files(
             if isinstance(e, HttpError) and e.status_code == 403:
                 # don't yield an error here because this is expected behavior
                 # when a user doesn't have access to a folder
-                logging.debug(f"Error getting files in parent {parent_id}: {e}")
+                _lineaje_payload = f"Error getting files in parent {parent_id}: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:a88f843066b9bef6616cdfca8cbf5c388f78687b49b7797faec1b3c4f152575e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a88f843066b9bef6616cdfca8cbf5c388f78687b49b7797faec1b3c4f152575e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 152, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 152, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
             else:
-                logging.error(f"Error getting files in parent {parent_id}: {e}")
+                _lineaje_payload = f"Error getting files in parent {parent_id}: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:0f1bb28ef4195ecbc1ace58dce600ba6b2a6b33714ef32df4d93d0441261afdd'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0f1bb28ef4195ecbc1ace58dce600ba6b2a6b33714ef32df4d93d0441261afdd', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 154, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 154, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
                 yield RetrievedDriveFile(
                     drive_file=file,
                     user_email=user_email,
@@ -160,13 +255,39 @@ def crawl_folders_for_files(
                     error=e,
                 )
     else:
-        logging.info(f"Skipping subfolder files since already traversed: {parent_id}")
+        _lineaje_payload = f"Skipping subfolder files since already traversed: {parent_id}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:235bf7dfdc095874ba1603d7c2dec49259b11ca0118010e25afdf922ee02f142'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:235bf7dfdc095874ba1603d7c2dec49259b11ca0118010e25afdf922ee02f142', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 163, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 163, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
     for subfolder in _get_folders_in_parent(
         service=service,
         parent_id=parent_id,
     ):
-        logging.info("Fetching all files in subfolder: " + subfolder["name"])
+        _lineaje_payload = "Fetching all files in subfolder: " + subfolder["name"]
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in crawl_folders_for_files).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a3ead58a148a9ef32678d90b2110de143c6ee498487545bd321550440ab21790'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a3ead58a148a9ef32678d90b2110de143c6ee498487545bd321550440ab21790', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 169, 'function': 'crawl_folders_for_files'}, 'file': 'common/data_source/google_drive/file_retrieval.py', 'line': 169, 'function': 'crawl_folders_for_files', 'agent_name': 'crawl_folders_for_files', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         yield from crawl_folders_for_files(
             service=service,
             parent_id=subfolder["id"],
