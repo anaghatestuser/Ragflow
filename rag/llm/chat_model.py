@@ -728,6 +728,7 @@ class LmStudioChat(Base):
             raise ValueError("Local llm url cannot be None")
         base_url = urljoin(base_url, "v1")
         super().__init__(key, model_name, base_url, **kwargs)
+        # LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
         self.client = OpenAI(api_key="lm-studio", base_url=base_url)
         self.model_name = model_name
 
