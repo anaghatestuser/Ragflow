@@ -22,6 +22,7 @@ from ragflow_sdk import RAGFlow
 import sys
 
 HOST_ADDRESS = "http://127.0.0.1"
+# LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
 API_KEY = "ragflow-IzZmY1MGVhYTBhMjExZWZiYTdjMDI0Mm"
 
 try:
