@@ -87,6 +87,12 @@ func (s *DocumentService) StartParseDocuments(ctx context.Context, doc *entity.D
 	unlock := lockDocumentParse(doc.ID)
 	defer unlock()
 
+	if opts.ApplyKB {
+		if err := s.applyKnowledgebaseParserConfig(ctx, doc, kb); err != nil {
+			return err
+		}
+	}
+
 	if opts.RerunWithDelete {
 		if err := s.clearDocumentParseResults(ctx, doc, kb.TenantID); err != nil {
 			return err
@@ -103,6 +109,37 @@ func (s *DocumentService) StartParseDocuments(ctx context.Context, doc *entity.D
 	if !strings.HasPrefix(responses[0].Result, "task_id:") {
 		return fmt.Errorf("failed to enqueue document %s: %s", doc.ID, responses[0].Result)
 	}
+	return nil
+}
+
+// applyKnowledgebaseParserConfig merges the dataset-scoped parser_config keys
+// (llm_id, enable_metadata, metadata) into the document's existing config and
+// persists the merged result before parsing when ApplyKB is requested.
+func (s *DocumentService) applyKnowledgebaseParserConfig(ctx context.Context, doc *entity.Document, kb *entity.Knowledgebase) error {
+	if doc == nil || kb == nil {
+		return fmt.Errorf("apply dataset parser config: document and dataset are required")
+	}
+	merged := entity.JSONMap{}
+	for k, v := range doc.ParserConfig {
+		merged[k] = v
+	}
+	merged["llm_id"] = kb.ParserConfig["llm_id"]
+	if v, ok := kb.ParserConfig["enable_metadata"]; ok {
+		merged["enable_metadata"] = v
+	} else {
+		merged["enable_metadata"] = false
+	}
+	if v, ok := kb.ParserConfig["metadata"]; ok {
+		merged["metadata"] = v
+	} else {
+		merged["metadata"] = map[string]interface{}{}
+	}
+	if err := s.documentDAO.UpdateByID(ctx, dao.DB, doc.ID, map[string]interface{}{
+		"parser_config": entity.JSONMap(merged),
+	}); err != nil {
+		return fmt.Errorf("apply dataset parser config for document %s: %w", doc.ID, err)
+	}
+	doc.ParserConfig = merged
 	return nil
 }
 
