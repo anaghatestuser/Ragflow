@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -42,6 +60,18 @@ def baike(cid, default_v=0):
         return GOODS.loc[str(cid), "len"]
     except Exception:
         pass
+    # LINEAJE: runtime guardrail checks `default_v` as it flows from the agent to the user interface, before it leaves the application (in baike).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `default_v` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:8e3f014809b9b69cbeac3193d06bec37aa3f9c9c65bb69dc7fea75140986c878'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8e3f014809b9b69cbeac3193d06bec37aa3f9c9c65bb69dc7fea75140986c878', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 45, 'function': 'baike'}, 'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 45, 'function': 'baike', 'agent_name': 'baike', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        default_v = _gr_client.enforce(_gr_site, default_v, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return default_v
 
 
@@ -63,6 +93,18 @@ def corpNorm(nm, add_region=True):
         flags=re.IGNORECASE,
     )
     if not nm or (len(nm) < 5 and not regions.isName(nm[0:2])):
+        # LINEAJE: runtime guardrail checks `nm` as it flows from the agent to the user interface, before it leaves the application (in corpNorm).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `nm` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:166d2f1fb8e8ed3ed83b35048d939c22d69437c066ad190d97162b963c113e91'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:166d2f1fb8e8ed3ed83b35048d939c22d69437c066ad190d97162b963c113e91', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 66, 'function': 'corpNorm'}, 'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 66, 'function': 'corpNorm', 'agent_name': 'corpNorm', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            nm = _gr_client.enforce(_gr_site, nm, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return nm
 
     tks = rag_tokenizer.tokenize(nm).split()
@@ -87,6 +129,18 @@ def corpNorm(nm, add_region=True):
 def rmNoise(n):
     n = re.sub(r"[\(（][^()（）]+[)）]", "", n)
     n = re.sub(r"[,. &（）()]+", "", n)
+    # LINEAJE: runtime guardrail checks `n` as it flows from the agent to the user interface, before it leaves the application (in rmNoise).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `n` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:943c354f3adcd0fa3385f66d8b2867bc875f1cd2b7dee051d3b94b7a873512f6'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:943c354f3adcd0fa3385f66d8b2867bc875f1cd2b7dee051d3b94b7a873512f6', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 90, 'function': 'rmNoise'}, 'file': 'deepdoc/parser/resume/entities/corporations.py', 'line': 90, 'function': 'rmNoise', 'agent_name': 'rmNoise', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        n = _gr_client.enforce(_gr_site, n, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return n
 
 
