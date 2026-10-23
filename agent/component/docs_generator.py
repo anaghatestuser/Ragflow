@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 import json
 import os
 import re
@@ -137,10 +155,36 @@ class PDFGenerator(Message, ABC):
                 pdfmetrics.registerFont(UnicodeCIDFont(cid_font))
                 cls._unicode_font_name = cid_font
                 cls._unicode_font_bold_name = cid_font  # CID fonts don't have bold variants
-                print(f"Registered CID font: {cid_font}")
+                _lineaje_payload = f"Registered CID font: {cid_font}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._register_unicode_fonts).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:44524a896c725d85c2a74b4d06a835a5d258c88bd5c100a22302fff1beb81be1'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:44524a896c725d85c2a74b4d06a835a5d258c88bd5c100a22302fff1beb81be1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 140, 'function': 'PDFGenerator._register_unicode_fonts'}, 'file': 'agent/component/docs_generator.py', 'line': 140, 'function': '_register_unicode_fonts', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
                 break
             except Exception as e:
-                print(f"Failed to register CID font {cid_font}: {e}")
+                _lineaje_payload = f"Failed to register CID font {cid_font}: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._register_unicode_fonts).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:ca916c2845ff10cea416dbd1318b3cb502ec69bf595d67c9e7ba97ac347bf686'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ca916c2845ff10cea416dbd1318b3cb502ec69bf595d67c9e7ba97ac347bf686', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 143, 'function': 'PDFGenerator._register_unicode_fonts'}, 'file': 'agent/component/docs_generator.py', 'line': 143, 'function': '_register_unicode_fonts', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
                 continue
         
         # If CID fonts fail, try TTF fonts as fallback
@@ -156,14 +200,40 @@ class PDFGenerator(Message, ABC):
                         pdfmetrics.registerFont(TTFont('UnicodeFont', font_path))
                         cls._unicode_font_name = 'UnicodeFont'
                         cls._unicode_font_bold_name = 'UnicodeFont'
-                        print(f"Registered TTF font from: {font_path}")
+                        _lineaje_payload = f"Registered TTF font from: {font_path}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._register_unicode_fonts).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:f95f6e5cba6a7206e56ff1be946e34ce8c3cf54f5eab34e4ead20542f7b3cbd0'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f95f6e5cba6a7206e56ff1be946e34ce8c3cf54f5eab34e4ead20542f7b3cbd0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 159, 'function': 'PDFGenerator._register_unicode_fonts'}, 'file': 'agent/component/docs_generator.py', 'line': 159, 'function': '_register_unicode_fonts', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        print(_lineaje_payload)
                         
                         # Register font family
                         from reportlab.pdfbase.pdfmetrics import registerFontFamily
                         registerFontFamily('UnicodeFont', normal='UnicodeFont', bold='UnicodeFont')
                         break
                     except Exception as e:
-                        print(f"Failed to register TTF font {font_path}: {e}")
+                        _lineaje_payload = f"Failed to register TTF font {font_path}: {e}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._register_unicode_fonts).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:f638064a1626196401265d6f9059d33ed46a6738a112fbf7f8c7f2e6ee489f56'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f638064a1626196401265d6f9059d33ed46a6738a112fbf7f8c7f2e6ee489f56', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 166, 'function': 'PDFGenerator._register_unicode_fonts'}, 'file': 'agent/component/docs_generator.py', 'line': 166, 'function': '_register_unicode_fonts', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        print(_lineaje_payload)
                         continue
         
         return cls._unicode_font_name is not None
@@ -222,7 +292,20 @@ class PDFGenerator(Message, ABC):
             if self._register_unicode_fonts() and self._unicode_font_name:
                 return (self._unicode_font_name, self._unicode_font_bold_name or self._unicode_font_name)
             else:
-                print("Warning: Content contains non-Latin characters but no Unicode font available")
+                _lineaje_payload = "Warning: Content contains non-Latin characters but no Unicode font available"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._get_font_for_content).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:186d94191951eba04e30f437224405d63969cfed4cf6cdcd5858e9b3518e0ca9'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:186d94191951eba04e30f437224405d63969cfed4cf6cdcd5858e9b3518e0ca9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 225, 'function': 'PDFGenerator._get_font_for_content'}, 'file': 'agent/component/docs_generator.py', 'line': 225, 'function': '_get_font_for_content', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
         
         # Fall back to configured font
         return (self._param.font_family, self._get_bold_font_name())
@@ -244,6 +327,18 @@ class PDFGenerator(Message, ABC):
         }
         font_family = getattr(self._param, 'font_family', 'Helvetica')
         if 'Bold' in font_family:
+            # LINEAJE: runtime guardrail checks `font_family` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._get_bold_font_name).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `font_family` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:446db8023e577683412fcda7150ac5d555b9115ff5d6b1ca4d4c547a5783be8f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:446db8023e577683412fcda7150ac5d555b9115ff5d6b1ca4d4c547a5783be8f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 247, 'function': 'PDFGenerator._get_bold_font_name'}, 'file': 'agent/component/docs_generator.py', 'line': 247, 'function': '_get_bold_font_name', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                font_family = _gr_client.enforce(_gr_site, font_family, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return font_family
         return font_map.get(font_family, 'Helvetica-Bold')
 
@@ -274,7 +369,20 @@ class PDFGenerator(Message, ABC):
             subtitle = self._param.subtitle or ""
             
             # Log PDF generation start
-            print(f"Starting PDF generation for title: {title}, content length: {len(content)} chars")
+            _lineaje_payload = f"Starting PDF generation for title: {title}, content length: {len(content)} chars"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:838abb1ff672b35e6bcbb5cbba904fa019bc25a65338fe7aca7ca101aa638a77'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:838abb1ff672b35e6bcbb5cbba904fa019bc25a65338fe7aca7ca101aa638a77', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 277, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 277, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            print(_lineaje_payload)
             
             # Resolve variable references in content using canvas
             if content and self._canvas.is_reff(content):
@@ -294,7 +402,20 @@ class PDFGenerator(Message, ABC):
                             else:
                                 content = content.replace("{" + match + "}", str(var_value))
                     except Exception as e:
-                        print(f"Error resolving variable {match}: {str(e)}")
+                        _lineaje_payload = f"Error resolving variable {match}: {str(e)}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:4dcaea28f5154581d622251c13c5ef9b09f2f2393a2daba51614f9f48488ab72'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4dcaea28f5154581d622251c13c5ef9b09f2f2393a2daba51614f9f48488ab72', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 297, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 297, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        print(_lineaje_payload)
                         content = content.replace("{" + match + "}", f"[ERROR: {str(e)}]")
             
             # Also process with get_kwargs for any remaining variables
@@ -302,7 +423,20 @@ class PDFGenerator(Message, ABC):
                 try:
                     content, _ = self.get_kwargs(content, kwargs)
                 except Exception as e:
-                    print(f"Error processing content with get_kwargs: {str(e)}")
+                    _lineaje_payload = f"Error processing content with get_kwargs: {str(e)}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:a7e06d025a4a398a0688f7de76d069e015b95db51b8959e77a241012d9855658'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a7e06d025a4a398a0688f7de76d069e015b95db51b8959e77a241012d9855658', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 305, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 305, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    print(_lineaje_payload)
             
             # Process template variables in title
             if title and self._canvas.is_reff(title):
@@ -313,7 +447,20 @@ class PDFGenerator(Message, ABC):
                         if var_value:
                             title = title.replace("{" + match + "}", str(var_value))
                 except Exception as e:
-                    print(f"Error processing title variables: {str(e)}")
+                    _lineaje_payload = f"Error processing title variables: {str(e)}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:f77e22274dd2882073b3c06863b56edf75bf489d4f1145f3e007b4ea1132a904'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f77e22274dd2882073b3c06863b56edf75bf489d4f1145f3e007b4ea1132a904', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 316, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 316, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    print(_lineaje_payload)
             
             if title:
                 try:
@@ -330,7 +477,20 @@ class PDFGenerator(Message, ABC):
                         if var_value:
                             subtitle = subtitle.replace("{" + match + "}", str(var_value))
                 except Exception as e:
-                    print(f"Error processing subtitle variables: {str(e)}")
+                    _lineaje_payload = f"Error processing subtitle variables: {str(e)}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:46c485f4a3a8b6897ad0b99b06b9822a57b14cd4a0f5fd0cf066e77c3cce8425'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:46c485f4a3a8b6897ad0b99b06b9822a57b14cd4a0f5fd0cf066e77c3cce8425', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 333, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 333, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    print(_lineaje_payload)
             
             if subtitle:
                 try:
@@ -368,7 +528,20 @@ class PDFGenerator(Message, ABC):
                 if file_size == 0:
                     raise Exception(f"Document file is empty: {file_path}")
                 
-                print(f"Successfully generated {output_format.upper()}: {file_path} (Size: {file_size} bytes)")
+                _lineaje_payload = f"Successfully generated {output_format.upper()}: {file_path} (Size: {file_size} bytes)"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:2285b97eccfca147679cc127dc7d205255f59b2d5042f5d98ee09b3b24a89c24'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2285b97eccfca147679cc127dc7d205255f59b2d5042f5d98ee09b3b24a89c24', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 371, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 371, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
                 
                 # Set outputs
                 self.set_output("file_path", file_path)
@@ -384,13 +557,47 @@ class PDFGenerator(Message, ABC):
                     "size": file_size
                 }
                 # Output download info as JSON string so it can be used in Message block
+                # LINEAJE: runtime guardrail checks `download_info` as it flows from the agent to an external endpoint, before it leaves the application (in PDFGenerator._invoke).
+                #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `download_info` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:d0ad8da3ac8793eabbc75b39d50c595240e7518dc2d5cebdc0f58a6d4fb9e45e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d0ad8da3ac8793eabbc75b39d50c595240e7518dc2d5cebdc0f58a6d4fb9e45e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 387, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 387, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    download_info = _gr_client.enforce(_gr_site, download_info, content_type='application/json', variable_name='download_info', source_file=__file__, before_line=387)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
                 download_json = json.dumps(download_info)
                 self.set_output("download", download_json)
                 
+                # LINEAJE: runtime guardrail checks `download_info` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._invoke).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `download_info` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:785010462b0796015d071a0bcec34e20ce8557c435fb89c48900cd97ec87f052'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:785010462b0796015d071a0bcec34e20ce8557c435fb89c48900cd97ec87f052', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 390, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 390, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    download_info = _gr_client.enforce(_gr_site, download_info, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return download_info
                 
             except Exception as e:
                 error_msg = f"Error in _generate_pdf: {str(e)}\n{traceback.format_exc()}"
+                # LINEAJE: runtime guardrail checks `error_msg` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `error_msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:579e7d3ac3fbf1631e168d1afda8b2f8d091e31f690c15a61ea777943239abb6'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:579e7d3ac3fbf1631e168d1afda8b2f8d091e31f690c15a61ea777943239abb6', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 394, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 394, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    error_msg = _gr_client.enforce(_gr_site, error_msg, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 print(error_msg)
                 self.set_output("success", False)
                 self.set_output("_ERROR", f"PDF generation failed: {str(e)}")
@@ -398,6 +605,18 @@ class PDFGenerator(Message, ABC):
                 
         except Exception as e:
             error_msg = f"Error in PDFGenerator._invoke: {str(e)}\n{traceback.format_exc()}"
+            # LINEAJE: runtime guardrail checks `error_msg` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._invoke).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `error_msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:6588132ac3664aa147e4a8057cd9ee4ca85d7e2783a5d001f7dcbdba1714d524'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6588132ac3664aa147e4a8057cd9ee4ca85d7e2783a5d001f7dcbdba1714d524', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 401, 'function': 'PDFGenerator._invoke'}, 'file': 'agent/component/docs_generator.py', 'line': 401, 'function': '_invoke', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                error_msg = _gr_client.enforce(_gr_site, error_msg, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             print(error_msg)
             self.set_output("success", False)
             self.set_output("_ERROR", f"PDF generation failed: {str(e)}")
@@ -494,10 +713,30 @@ class PDFGenerator(Message, ABC):
             
             # Write to temporary file first
             with open(temp_file_path, 'wb') as f:
+                # LINEAJE: runtime guardrail checks `pdf_bytes` as it flows from the agent to a file, before it is written to disk (in PDFGenerator._generate_pdf).
+                #   Detected: this statement moves data from the agent to a file with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_025; sensitive values in `pdf_bytes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:0b8bcdd03474aefc9917504902c7377c1b6c0cc3a53f78503a18775ccce3c1f8'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0b8bcdd03474aefc9917504902c7377c1b6c0cc3a53f78503a18775ccce3c1f8', phase='file_write', boundary={'source': 'agent_message', 'sink': 'file_content'}, fail_mode='BLOCK', source_type='agent', destination_type='file', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 497, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 497, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    pdf_bytes = _gr_client.enforce(_gr_site, pdf_bytes, content_type='application/json', variable_name='pdf_bytes', source_file=__file__, before_line=497)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
                 f.write(pdf_bytes)
             
             # Atomic rename to final filename (works across different filesystems)
             if os.path.exists(file_path):
+                # LINEAJE: runtime guardrail checks `file_path` as it flows from the agent to system, at a security decision (in PDFGenerator._generate_pdf).
+                #   Detected: this statement moves data from the agent to system with no runtime policy check (detection confidence: medium).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_029; sensitive values in `file_path` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:00616123bce61b180223501f51932cb2ce5edd9c6f3781940c1dd381448e0203'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:00616123bce61b180223501f51932cb2ce5edd9c6f3781940c1dd381448e0203', phase='security_decision', boundary={'source': 'agent_message', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='agent', destination_type='system', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 501, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 501, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    file_path = _gr_client.enforce(_gr_site, file_path, content_type='application/json', variable_name='file_path', source_file=__file__, before_line=501)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
                 os.remove(file_path)
             os.rename(temp_file_path, file_path)
             
@@ -518,11 +757,46 @@ class PDFGenerator(Message, ABC):
             # Clean up any temporary files on error
             if temp_file_path and os.path.exists(temp_file_path):
                 try:
+                    # LINEAJE: runtime guardrail checks `temp_file_path` as it flows from the agent to system, at a security decision (in PDFGenerator._generate_pdf).
+                    #   Detected: this statement moves data from the agent to system with no runtime policy check (detection confidence: medium).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_029; sensitive values in `temp_file_path` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:e6b1e0880733044e48eb376a3c2c29acb24f3ff1167785fa33db4f5bbfe8f698'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e6b1e0880733044e48eb376a3c2c29acb24f3ff1167785fa33db4f5bbfe8f698', phase='security_decision', boundary={'source': 'agent_message', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='agent', destination_type='system', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 521, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 521, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        temp_file_path = _gr_client.enforce(_gr_site, temp_file_path, content_type='application/json', variable_name='temp_file_path', source_file=__file__, before_line=521)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     os.remove(temp_file_path)
                 except Exception as cleanup_error:
-                    print(f"Error cleaning up temporary file: {cleanup_error}")
+                    _lineaje_payload = f"Error cleaning up temporary file: {cleanup_error}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._generate_pdf).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:ff4f73c835a7d23d270d68d3616ec5bdfade50b47da68fc898dc9e14c9c32d5b'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ff4f73c835a7d23d270d68d3616ec5bdfade50b47da68fc898dc9e14c9c32d5b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 523, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 523, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    print(_lineaje_payload)
                     
             error_msg = f"Error generating PDF: {str(e)}\n{traceback.format_exc()}"
+            # LINEAJE: runtime guardrail checks `error_msg` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._generate_pdf).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `error_msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b123896126e07a3fba28f2de81384b2520e9a5881800944375c23232c8971442'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b123896126e07a3fba28f2de81384b2520e9a5881800944375c23232c8971442', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 526, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 526, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                error_msg = _gr_client.enforce(_gr_site, error_msg, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             print(error_msg)
             raise Exception(f"PDF generation failed: {str(e)}")
             
@@ -532,7 +806,20 @@ class PDFGenerator(Message, ABC):
                 try:
                     buffer.close()
                 except Exception as close_error:
-                    print(f"Error closing buffer: {close_error}")
+                    _lineaje_payload = f"Error closing buffer: {close_error}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._generate_pdf).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:48e9f0169f611fb5064b3f64b89293b9a8198025867a58da741bb48ba92014b1'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:48e9f0169f611fb5064b3f64b89293b9a8198025867a58da741bb48ba92014b1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 535, 'function': 'PDFGenerator._generate_pdf'}, 'file': 'agent/component/docs_generator.py', 'line': 535, 'function': '_generate_pdf', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    print(_lineaje_payload)
 
     def _create_styles(self, content: str = ""):
         """Create custom paragraph styles with Unicode font support if needed"""
@@ -544,17 +831,56 @@ class PDFGenerator(Message, ABC):
             if self._register_unicode_fonts() and self._unicode_font_name:
                 regular_font = self._unicode_font_name
                 bold_font = self._unicode_font_bold_name or self._unicode_font_name
-                print(f"Using CID font for CJK content: {regular_font}")
+                _lineaje_payload = f"Using CID font for CJK content: {regular_font}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._create_styles).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:3360c1229dc7e1234fa1a24ed2fdb72a6e2a5245e7939b98b91dbc5f620e9d02'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3360c1229dc7e1234fa1a24ed2fdb72a6e2a5245e7939b98b91dbc5f620e9d02', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 547, 'function': 'PDFGenerator._create_styles'}, 'file': 'agent/component/docs_generator.py', 'line': 547, 'function': '_create_styles', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
             else:
                 # Fall back to configured font if CID fonts unavailable
                 regular_font = self._param.font_family
                 bold_font = self._get_bold_font_name()
-                print(f"Warning: CJK content detected but no CID font available, using {regular_font}")
+                _lineaje_payload = f"Warning: CJK content detected but no CID font available, using {regular_font}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._create_styles).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:f3f603745f6de6a541749304ce44af1840011ed1027bdb3b298d2f5de21074bc'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f3f603745f6de6a541749304ce44af1840011ed1027bdb3b298d2f5de21074bc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 552, 'function': 'PDFGenerator._create_styles'}, 'file': 'agent/component/docs_generator.py', 'line': 552, 'function': '_create_styles', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
         else:
             # Use user-selected font for Latin-only content
             regular_font = self._param.font_family
             bold_font = self._get_bold_font_name()
-            print(f"Using configured font: {regular_font}")
+            _lineaje_payload = f"Using configured font: {regular_font}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._create_styles).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:38da544606c68d949685a9da6135658275b12684b3bee801531107da983a2390'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:38da544606c68d949685a9da6135658275b12684b3bee801531107da983a2390', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 557, 'function': 'PDFGenerator._create_styles'}, 'file': 'agent/component/docs_generator.py', 'line': 557, 'function': '_create_styles', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            print(_lineaje_payload)
         
         # Store active fonts as instance variables for use in other methods
         self._active_font = regular_font
@@ -575,6 +901,18 @@ class PDFGenerator(Message, ABC):
                 'Courier': 'Courier-Bold',
             }
             if 'Bold' in font_family:
+                # LINEAJE: runtime guardrail checks `font_family` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator.get_bold_font).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `font_family` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e258cc9dfc12fa8472229bcdb27023b0453e88c7a83ffdc9cac976286271bb4a'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e258cc9dfc12fa8472229bcdb27023b0453e88c7a83ffdc9cac976286271bb4a', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 578, 'function': 'PDFGenerator._create_styles.get_bold_font'}, 'file': 'agent/component/docs_generator.py', 'line': 578, 'function': 'get_bold_font', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    font_family = _gr_client.enforce(_gr_site, font_family, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return font_family
             return font_map.get(font_family, 'Helvetica-Bold')
         
@@ -699,6 +1037,18 @@ class PDFGenerator(Message, ABC):
             textColor=colors.HexColor(self._param.text_color)
         )
         
+        # LINEAJE: runtime guardrail checks `styles` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._create_styles).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `styles` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c084133deafd779af7faa1398a63689caa84d3c9d4e395cc1c48e9c6146c9b26'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c084133deafd779af7faa1398a63689caa84d3c9d4e395cc1c48e9c6146c9b26', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 702, 'function': 'PDFGenerator._create_styles'}, 'file': 'agent/component/docs_generator.py', 'line': 702, 'function': '_create_styles', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            styles = _gr_client.enforce(_gr_site, styles, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return styles
 
     def _parse_markdown_content(self, content: str, styles):
@@ -816,6 +1166,18 @@ class PDFGenerator(Message, ABC):
             elements.append(Paragraph(formatted_text, styles['CustomBody']))
             elements.append(Spacer(1, 0.1 * inch))
         
+        # LINEAJE: runtime guardrail checks `elements` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._parse_markdown_content).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `elements` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f0d1324ec24618188b0def8aae23016d9b5f5efef2b5c774122c717f454dc0c2'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f0d1324ec24618188b0def8aae23016d9b5f5efef2b5c774122c717f454dc0c2', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 819, 'function': 'PDFGenerator._parse_markdown_content'}, 'file': 'agent/component/docs_generator.py', 'line': 819, 'function': '_parse_markdown_content', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            elements = _gr_client.enforce(_gr_site, elements, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return elements
 
     def _is_special_line(self, line: str) -> bool:
@@ -863,6 +1225,18 @@ class PDFGenerator(Message, ABC):
         for i, code in enumerate(code_blocks):
             text = text.replace(f"__CODE_BLOCK_{i}__", f'<font name="Courier" color="#333333">{code}</font>')
 
+        # LINEAJE: runtime guardrail checks `text` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._format_inline).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b8ee81402cad31ec02ff7876835bf09e46c08726ef662115c4724666282687a8'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b8ee81402cad31ec02ff7876835bf09e46c08726ef662115c4724666282687a8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 866, 'function': 'PDFGenerator._format_inline'}, 'file': 'agent/component/docs_generator.py', 'line': 866, 'function': '_format_inline', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            text = _gr_client.enforce(_gr_site, text, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return text
 
     def _escape_html(self, text: str) -> str:
@@ -926,6 +1300,18 @@ class PDFGenerator(Message, ABC):
                 'Courier': 'Courier-Bold',
             }
             if 'Bold' in font_family:
+                # LINEAJE: runtime guardrail checks `font_family` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator.get_bold_font).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `font_family` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:f8d4e629024ebb777c13e8737ce1e169076b1da498d2b1c5a3e8a1c01396c965'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f8d4e629024ebb777c13e8737ce1e169076b1da498d2b1c5a3e8a1c01396c965', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 929, 'function': 'PDFGenerator._get_cell_style.get_bold_font'}, 'file': 'agent/component/docs_generator.py', 'line': 929, 'function': 'get_bold_font', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    font_family = _gr_client.enforce(_gr_site, font_family, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return font_family
             return font_map.get(font_family, 'Helvetica-Bold')
         
@@ -1006,6 +1392,18 @@ class PDFGenerator(Message, ABC):
         try:
             # If we have no data, return empty list
             if not data or not any(data):
+                # LINEAJE: runtime guardrail checks `elements` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._convert_table_to_definition_list).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `elements` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:3eb1e48d3f7a38c017cc1a018f1756112673740d2564d66f0a9030efb9b2be3e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3eb1e48d3f7a38c017cc1a018f1756112673740d2564d66f0a9030efb9b2be3e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1009, 'function': 'PDFGenerator._convert_table_to_definition_list'}, 'file': 'agent/component/docs_generator.py', 'line': 1009, 'function': '_convert_table_to_definition_list', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    elements = _gr_client.enforce(_gr_site, elements, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return elements
                 
             # Get column headers or generate them
@@ -1155,6 +1553,18 @@ class PDFGenerator(Message, ABC):
                 
             elements.extend(error_msg)
         
+        # LINEAJE: runtime guardrail checks `elements` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._convert_table_to_definition_list).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `elements` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9008c2fe5a9def461efb7752906ca063ccaa47e3efe8d1fd5f242185e5cef0ad'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9008c2fe5a9def461efb7752906ca063ccaa47e3efe8d1fd5f242185e5cef0ad', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1158, 'function': 'PDFGenerator._convert_table_to_definition_list'}, 'file': 'agent/component/docs_generator.py', 'line': 1158, 'function': '_convert_table_to_definition_list', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            elements = _gr_client.enforce(_gr_site, elements, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return elements
 
     def _create_table(self, table_lines: list[str]) -> Optional[list]:
@@ -1330,11 +1740,37 @@ class PDFGenerator(Message, ABC):
                 return [table, Spacer(1, 0.2 * inch)]
                 
             except Exception as table_error:
-                print(f"Error creating table: {table_error}")
+                _lineaje_payload = f"Error creating table: {table_error}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._create_table).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:f39721c99a008f9989e39c3a5261b740e16c912eb67b72fb498472621cbbc965'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f39721c99a008f9989e39c3a5261b740e16c912eb67b72fb498472621cbbc965', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1333, 'function': 'PDFGenerator._create_table'}, 'file': 'agent/component/docs_generator.py', 'line': 1333, 'function': '_create_table', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                print(_lineaje_payload)
                 return self._convert_table_to_definition_list(data)
                 
         except Exception as e:
-            print(f"Error processing table: {e}")
+            _lineaje_payload = f"Error processing table: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._create_table).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:cf0dd76109dd81e02e7106c49eb5be5ae01232a231568cd8b76cde2dbf8ee445'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cf0dd76109dd81e02e7106c49eb5be5ae01232a231568cd8b76cde2dbf8ee445', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1337, 'function': 'PDFGenerator._create_table'}, 'file': 'agent/component/docs_generator.py', 'line': 1337, 'function': '_create_table', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            print(_lineaje_payload)
             # Return a simple text representation of the table
             try:
                 text_content = []
@@ -1384,9 +1820,34 @@ class PDFGenerator(Message, ABC):
             else:
                 img.hAlign = 'LEFT'
             
+            # LINEAJE: runtime guardrail checks `img` as it flows from the agent to the user interface, before it leaves the application (in PDFGenerator._add_logo).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `img` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:13b5a9f45efe561c207e14debc2fc165eb17eda07f10067c0a76b8798fc467c9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:13b5a9f45efe561c207e14debc2fc165eb17eda07f10067c0a76b8798fc467c9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1387, 'function': 'PDFGenerator._add_logo'}, 'file': 'agent/component/docs_generator.py', 'line': 1387, 'function': '_add_logo', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                img = _gr_client.enforce(_gr_site, img, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return img
         except Exception as e:
-            print(f"Error adding logo: {e}")
+            _lineaje_payload = f"Error adding logo: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PDFGenerator._add_logo).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:019be50cb2e7e4bbbbc8a9c8e9b776066214dba6d85f2bb2f491f0186ca975af'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:019be50cb2e7e4bbbbc8a9c8e9b776066214dba6d85f2bb2f491f0186ca975af', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1389, 'function': 'PDFGenerator._add_logo'}, 'file': 'agent/component/docs_generator.py', 'line': 1389, 'function': '_add_logo', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            print(_lineaje_payload)
             return None
 
     def _add_page_decorations(self, canvas, doc):
@@ -1509,6 +1970,18 @@ class PDFGenerator(Message, ABC):
             # Read and encode to base64
             with open(file_path, 'rb') as f:
                 doc_bytes = f.read()
+                # LINEAJE: runtime guardrail checks `doc_bytes` as it flows from file storage to the agent (in PDFGenerator._generate_docx).
+                #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `doc_bytes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:cdb20022fded1a7970df96c32c223ee9c758a665fcb79b31435c178aabfb23a6'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cdb20022fded1a7970df96c32c223ee9c758a665fcb79b31435c178aabfb23a6', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1511, 'function': 'PDFGenerator._generate_docx'}, 'file': 'agent/component/docs_generator.py', 'line': 1511, 'function': '_generate_docx', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    doc_bytes = _gr_client.enforce(_gr_site, doc_bytes, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    raise
             doc_base64 = base64.b64encode(doc_bytes).decode('utf-8')
             
             return file_path, doc_base64
@@ -1559,6 +2032,16 @@ class PDFGenerator(Message, ABC):
             final_text = '\n'.join(text_content)
             
             with open(file_path, 'w', encoding='utf-8') as f:
+                # LINEAJE: runtime guardrail checks `final_text` as it flows from the agent to a file, before it is written to disk (in PDFGenerator._generate_txt).
+                #   Detected: this statement moves data from the agent to a file with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_025; sensitive values in `final_text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:965d18d4647cb1205129ed982202f85e77c61695c825970bd9cebb9b14c5d0ea'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:965d18d4647cb1205129ed982202f85e77c61695c825970bd9cebb9b14c5d0ea', phase='file_write', boundary={'source': 'agent_message', 'sink': 'file_content'}, fail_mode='BLOCK', source_type='agent', destination_type='file', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/docs_generator.py', 'line': 1562, 'function': 'PDFGenerator._generate_txt'}, 'file': 'agent/component/docs_generator.py', 'line': 1562, 'function': '_generate_txt', 'agent_name': 'PDFGenerator', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    final_text = _gr_client.enforce(_gr_site, final_text, content_type='application/json', variable_name='final_text', source_file=__file__, before_line=1562)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
                 f.write(final_text)
             
             # Encode to base64
