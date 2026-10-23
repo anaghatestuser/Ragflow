@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -76,6 +94,18 @@ class LLMParam(ComponentParamBase):
             conf["presence_penalty"] = float(self.presence_penalty)
         if float(self.frequency_penalty) > 0 and get_attr("frequencyPenaltyEnabled"):
             conf["frequency_penalty"] = float(self.frequency_penalty)
+        # LINEAJE: runtime guardrail checks `conf` as it flows from the agent to the user interface, before it leaves the application (in LLMParam.gen_conf).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `conf` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b73c7efa0e36ff2f94aed48072a05c7b642d84d88c17c26ac467da8c6a36b493'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b73c7efa0e36ff2f94aed48072a05c7b642d84d88c17c26ac467da8c6a36b493', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 79, 'function': 'LLMParam.gen_conf'}, 'file': 'agent/component/llm.py', 'line': 79, 'function': 'gen_conf', 'agent_name': 'LLMParam', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            conf = _gr_client.enforce(_gr_site, conf, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return conf
 
 
@@ -97,6 +127,18 @@ class LLM(ComponentBase):
                 "type": "line",
                 "name": v["name"]
             }
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in LLM.get_input_form).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2effa27b956f89c1b4f6f16e8b2e82533234e01f0961a68161554ea410158f36'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2effa27b956f89c1b4f6f16e8b2e82533234e01f0961a68161554ea410158f36', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 100, 'function': 'LLM.get_input_form'}, 'file': 'agent/component/llm.py', 'line': 100, 'function': 'get_input_form', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     def get_input_elements(self) -> dict[str, Any]:
@@ -106,6 +148,18 @@ class LLM(ComponentBase):
         for prompt in self._param.prompts:
             d = self.get_input_elements_from_text(prompt["content"])
             res.update(d)
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in LLM.get_input_elements).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b43e6b3413405515742dd90d62e1fa189fc573b9bb6c8ab5371e01d221f7b84f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b43e6b3413405515742dd90d62e1fa189fc573b9bb6c8ab5371e01d221f7b84f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 109, 'function': 'LLM.get_input_elements'}, 'file': 'agent/component/llm.py', 'line': 109, 'function': 'get_input_elements', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     def set_debug_inputs(self, inputs: dict[str, dict]):
@@ -144,7 +198,18 @@ class LLM(ComponentBase):
             args[k] = o["value"]
             if not isinstance(args[k], str):
                 try:
-                    args[k] = json.dumps(args[k], ensure_ascii=False)
+                    _lineaje_payload = args[k]
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to an external endpoint, before it leaves the application (in LLM._prepare_prompt_variables).
+                    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:99ba93f12f2d3e5ec543cc2f37063d0cafde556ebcb256c86957a2cb73193779'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:99ba93f12f2d3e5ec543cc2f37063d0cafde556ebcb256c86957a2cb73193779', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 147, 'function': 'LLM._prepare_prompt_variables'}, 'file': 'agent/component/llm.py', 'line': 147, 'function': '_prepare_prompt_variables', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=147)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    args[k] = json.dumps(_lineaje_payload, ensure_ascii=False)
                 except Exception:
                     args[k] = str(args[k])
             self.set_input_value(k, args[k])
@@ -188,6 +253,18 @@ class LLM(ComponentBase):
                 elif delta_ans.find("<think>") > 0:
                     delta_ans = txt[last_idx:last_idx + delta_ans.find("<think>")]
                     last_idx += delta_ans.find("<think>")
+                    # LINEAJE: runtime guardrail checks `delta_ans` as it flows from the agent to the user interface, before it leaves the application (in LLM.delta).
+                    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `delta_ans` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:3c3702df3c5b65603dddef60c61f52560f5b0e467e4af7ec3448fa323cdb4e79'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3c3702df3c5b65603dddef60c61f52560f5b0e467e4af7ec3448fa323cdb4e79', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 191, 'function': 'LLM._generate_streamly.delta_wrapper.delta'}, 'file': 'agent/component/llm.py', 'line': 191, 'function': 'delta', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        delta_ans = _gr_client.enforce(_gr_site, delta_ans, content_type='text/plain')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     return delta_ans
                 elif delta_ans.endswith("</think>"):
                     endswith_think = True
@@ -228,6 +305,18 @@ class LLM(ComponentBase):
             elif delta_ans.find("<think>") > 0:
                 delta_ans = txt[last_idx:last_idx + delta_ans.find("<think>")]
                 last_idx += delta_ans.find("<think>")
+                # LINEAJE: runtime guardrail checks `delta_ans` as it flows from the agent to the user interface, before it leaves the application (in LLM.delta).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `delta_ans` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9b9d23766d9f8e44c1072676b356bca32adb15bd0d07eb7e8a9be0d3d4653ddb'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b9d23766d9f8e44c1072676b356bca32adb15bd0d07eb7e8a9be0d3d4653ddb', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 231, 'function': 'LLM._stream_output_async.delta'}, 'file': 'agent/component/llm.py', 'line': 231, 'function': 'delta', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    delta_ans = _gr_client.enforce(_gr_site, delta_ans, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return delta_ans
             elif delta_ans.endswith("</think>"):
                 endswith_think = True
@@ -278,6 +367,16 @@ class LLM(ComponentBase):
         except Exception:
             pass
         if output_structure and isinstance(output_structure, dict) and output_structure.get("properties") and len(output_structure["properties"]) > 0:
+            # LINEAJE: runtime guardrail checks `output_structure` as it flows from the agent to an external endpoint, before it leaves the application (in LLM.clean_formated_answer).
+            #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `output_structure` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:afd90b31c9e5e3549417f2e73dd40b4022f29f5416d74add4c18a0436e6b7201'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:afd90b31c9e5e3549417f2e73dd40b4022f29f5416d74add4c18a0436e6b7201', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 281, 'function': 'LLM._invoke_async'}, 'file': 'agent/component/llm.py', 'line': 281, 'function': 'clean_formated_answer', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                output_structure = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, output_structure, content_type='application/json', variable_name='output_structure', source_file=__file__, before_line=281))
+            except _gr_client.GuardrailUnavailableError:
+                pass
             schema = json.dumps(output_structure, ensure_ascii=False, indent=2)
             prompt_with_schema = prompt + structured_output_prompt(schema)
             for _ in range(self._param.max_retries + 1):
@@ -292,7 +391,20 @@ class LLM(ComponentBase):
                 ans = await self._generate_async(msg_fit)
                 msg_fit.pop(0)
                 if ans.find("**ERROR**") >= 0:
-                    logging.error(f"LLM response error: {ans}")
+                    _lineaje_payload = f"LLM response error: {ans}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in LLM.clean_formated_answer).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:86b7eb3d1a846d23803b185acf91580a40606277baedcaa417258fd24d6795af'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:86b7eb3d1a846d23803b185acf91580a40606277baedcaa417258fd24d6795af', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 295, 'function': 'LLM._invoke_async'}, 'file': 'agent/component/llm.py', 'line': 295, 'function': 'clean_formated_answer', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.error(_lineaje_payload)
                     error = ans
                     continue
                 try:
@@ -325,7 +437,20 @@ class LLM(ComponentBase):
             ans = await self._generate_async(msg_fit)
             msg_fit.pop(0)
             if ans.find("**ERROR**") >= 0:
-                logging.error(f"LLM response error: {ans}")
+                _lineaje_payload = f"LLM response error: {ans}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in LLM.clean_formated_answer).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:da4359dc392f94ccadfa71fdeb1babeee33b87efe5e2a90823611bd3f5bae13d'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:da4359dc392f94ccadfa71fdeb1babeee33b87efe5e2a90823611bd3f5bae13d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 328, 'function': 'LLM._invoke_async'}, 'file': 'agent/component/llm.py', 'line': 328, 'function': 'clean_formated_answer', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
                 error = ans
                 continue
             self.set_output("content", ans)
@@ -343,7 +468,20 @@ class LLM(ComponentBase):
 
     async def add_memory(self, user:str, assist:str, func_name: str, params: dict, results: str, user_defined_prompt:dict={}):
         summ = await tool_call_summary(self.chat_mdl, func_name, params, results, user_defined_prompt)
-        logging.info(f"[MEMORY]: {summ}")
+        _lineaje_payload = f"[MEMORY]: {summ}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in LLM.add_memory).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3b5729a31aa544bd7bf1fb81b0d521d3d7f387bd9e3c35970c1c5871688d245a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3b5729a31aa544bd7bf1fb81b0d521d3d7f387bd9e3c35970c1c5871688d245a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/llm.py', 'line': 346, 'function': 'LLM.add_memory'}, 'file': 'agent/component/llm.py', 'line': 346, 'function': 'add_memory', 'agent_name': 'LLM', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         self._canvas.add_memory(user, assist, summ)
 
     def thoughts(self) -> str:
