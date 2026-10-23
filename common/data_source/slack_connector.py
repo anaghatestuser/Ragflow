@@ -1,4 +1,22 @@
 """Slack connector"""
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import itertools
 import logging
@@ -84,6 +102,18 @@ def _collect_paginated_channels(
     ):
         channels.extend(result["channels"])
 
+    # LINEAJE: runtime guardrail checks `channels` as it flows from the agent to the user interface, before it leaves the application (in _collect_paginated_channels).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `channels` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:786a7275ca93c6e4fac7933671d2337e08656d97cc1b3477874f028428db53a8'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:786a7275ca93c6e4fac7933671d2337e08656d97cc1b3477874f028428db53a8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 87, 'function': '_collect_paginated_channels'}, 'file': 'common/data_source/slack_connector.py', 'line': 87, 'function': '_collect_paginated_channels', 'agent_name': '_collect_paginated_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        channels = _gr_client.enforce(_gr_site, channels, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return channels
 
 
@@ -109,16 +139,54 @@ def get_channels(
     except SlackApiError as e:
         msg = f"Unable to fetch private channels due to: {e}."
         if not get_public:
-            logging.warning(msg + " Public channels are not enabled.")
+            _lineaje_payload = msg + " Public channels are not enabled."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in get_channels).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:26528007a714e79cc599cbccc2b1c472f1fa60dd6c340de3f907a566126ea88d'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:26528007a714e79cc599cbccc2b1c472f1fa60dd6c340de3f907a566126ea88d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 112, 'function': 'get_channels'}, 'file': 'common/data_source/slack_connector.py', 'line': 112, 'function': 'get_channels', 'agent_name': 'get_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             return []
 
-        logging.warning(msg + " Trying again with public channels only.")
+        _lineaje_payload = msg + " Trying again with public channels only."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in get_channels).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:be265557de859cacd72456210e1d715e1dfb1208c2c774c0bd690579a4e71923'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:be265557de859cacd72456210e1d715e1dfb1208c2c774c0bd690579a4e71923', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 115, 'function': 'get_channels'}, 'file': 'common/data_source/slack_connector.py', 'line': 115, 'function': 'get_channels', 'agent_name': 'get_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.warning(_lineaje_payload)
         channel_types = ["public_channel"]
         channels = _collect_paginated_channels(
             client=client,
             exclude_archived=exclude_archived,
             channel_types=channel_types,
         )
+    # LINEAJE: runtime guardrail checks `channels` as it flows from the agent to the user interface, before it leaves the application (in get_channels).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `channels` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:060eec814a080949347e3c5113b662c0bb30e17be36598547216af3823687767'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:060eec814a080949347e3c5113b662c0bb30e17be36598547216af3823687767', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 122, 'function': 'get_channels'}, 'file': 'common/data_source/slack_connector.py', 'line': 122, 'function': 'get_channels', 'agent_name': 'get_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        channels = _gr_client.enforce(_gr_site, channels, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return channels
 
 
@@ -136,7 +204,20 @@ def get_channel_messages(
             channel=channel["id"],
             is_private=channel["is_private"],
         )
-        logging.info(f"Successfully joined '{channel['name']}'")
+        _lineaje_payload = f"Successfully joined '{channel['name']}'"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in get_channel_messages).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:35c59381092ece12631b2e5f274398a9e63f5ec0dc7f28511537b87be90100eb'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:35c59381092ece12631b2e5f274398a9e63f5ec0dc7f28511537b87be90100eb', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 139, 'function': 'get_channel_messages'}, 'file': 'common/data_source/slack_connector.py', 'line': 139, 'function': 'get_channel_messages', 'agent_name': 'get_channel_messages', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
     for result in make_paginated_slack_api_call(
         client.conversations_history,
@@ -158,6 +239,18 @@ def get_thread(client: WebClient, channel_id: str, thread_id: str) -> ThreadType
         client.conversations_replies, channel=channel_id, ts=thread_id
     ):
         threads.extend(result["messages"])
+    # LINEAJE: runtime guardrail checks `threads` as it flows from the agent to the user interface, before it leaves the application (in get_thread).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `threads` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:d98bc2ee54c938edc33153c1920c630aa0d4d9e6842b51338a5c4791875e7c04'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d98bc2ee54c938edc33153c1920c630aa0d4d9e6842b51338a5c4791875e7c04', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 161, 'function': 'get_thread'}, 'file': 'common/data_source/slack_connector.py', 'line': 161, 'function': 'get_thread', 'agent_name': 'get_thread', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        threads = _gr_client.enforce(_gr_site, threads, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return threads
 
 
@@ -236,6 +329,18 @@ def filter_channels(
     regex_enabled: bool,
 ) -> list[ChannelType]:
     if not channels_to_connect:
+        # LINEAJE: runtime guardrail checks `all_channels` as it flows from the agent to the user interface, before it leaves the application (in filter_channels).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `all_channels` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:81f43014202fb2fa78ecd123af874219db4c3defdd74ae736155f31934484f2e'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:81f43014202fb2fa78ecd123af874219db4c3defdd74ae736155f31934484f2e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 239, 'function': 'filter_channels'}, 'file': 'common/data_source/slack_connector.py', 'line': 239, 'function': 'filter_channels', 'agent_name': 'filter_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            all_channels = _gr_client.enforce(_gr_site, all_channels, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return all_channels
 
     if regex_enabled:
@@ -289,12 +394,51 @@ def _get_messages(
             )
         except SlackApiError as e:
             if e.response["error"] == "is_archived":
-                logging.warning(f"Channel {channel['name']} is archived. Skipping.")
+                _lineaje_payload = f"Channel {channel['name']} is archived. Skipping."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _get_messages).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:985cc8a25fb9d282bce22782ff0e6a2186b8f90c9962b24e59e6829cfe3dfa9e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:985cc8a25fb9d282bce22782ff0e6a2186b8f90c9962b24e59e6829cfe3dfa9e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 292, 'function': '_get_messages'}, 'file': 'common/data_source/slack_connector.py', 'line': 292, 'function': '_get_messages', 'agent_name': '_get_messages', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 return [], False
 
-            logging.exception(f"Error joining channel {channel['name']}")
+            _lineaje_payload = f"Error joining channel {channel['name']}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _get_messages).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a59fe1684abb10548e65ed9912693b10320ca51242af90f3ab5815a02a4852ac'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a59fe1684abb10548e65ed9912693b10320ca51242af90f3ab5815a02a4852ac', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 295, 'function': '_get_messages'}, 'file': 'common/data_source/slack_connector.py', 'line': 295, 'function': '_get_messages', 'agent_name': '_get_messages', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
             raise
-        logging.info(f"Successfully joined '{channel['name']}'")
+        _lineaje_payload = f"Successfully joined '{channel['name']}'"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _get_messages).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e809240e0d39910ba5eb053aa4ae00bfb73ff31a1b9829e079225c099a63254e'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e809240e0d39910ba5eb053aa4ae00bfb73ff31a1b9829e079225c099a63254e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 297, 'function': '_get_messages'}, 'file': 'common/data_source/slack_connector.py', 'line': 297, 'function': '_get_messages', 'agent_name': '_get_messages', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
     response = client.conversations_history(
         channel=channel["id"],
@@ -398,7 +542,20 @@ def _process_message(
             failure=None,
         )
     except Exception as e:
-        (logging.exception(f"Error processing message {message['ts']}"))
+        _lineaje_payload = f"Error processing message {message['ts']}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _process_message).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:fddc9412a6e84abad7c8a6029bc15e8ce3b9eeb1433c58cbc2a10fb6079370ca'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:fddc9412a6e84abad7c8a6029bc15e8ce3b9eeb1433c58cbc2a10fb6079370ca', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 401, 'function': '_process_message'}, 'file': 'common/data_source/slack_connector.py', 'line': 401, 'function': '_process_message', 'agent_name': '_process_message', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        (logging.exception(_lineaje_payload))
         return ProcessedSlackMessage(
             doc=None,
             thread_or_message_ts=thread_or_message_ts,
@@ -550,7 +707,20 @@ class SlackConnector(
     ) -> CheckpointOutput:
         """Load documents from checkpoint"""
         # Simplified version, not implementing full checkpoint functionality
-        logging.warning("Checkpoint functionality not implemented in simplified version")
+        _lineaje_payload = "Checkpoint functionality not implemented in simplified version"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in SlackConnector.load_from_checkpoint).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6b97e8893db13ce119963e73b64856cca243f38a2c504e2dadb2f91e8b740001'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6b97e8893db13ce119963e73b64856cca243f38a2c504e2dadb2f91e8b740001', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 553, 'function': 'SlackConnector.load_from_checkpoint'}, 'file': 'common/data_source/slack_connector.py', 'line': 553, 'function': 'load_from_checkpoint', 'agent_name': 'SlackConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.warning(_lineaje_payload)
         return []
 
     def load_from_checkpoint_with_perm_sync(
@@ -561,7 +731,20 @@ class SlackConnector(
     ) -> CheckpointOutput:
         """Load documents from checkpoint (with permission sync)"""
         # Simplified version, not implementing full checkpoint functionality
-        logging.warning("Checkpoint functionality not implemented in simplified version")
+        _lineaje_payload = "Checkpoint functionality not implemented in simplified version"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in SlackConnector.load_from_checkpoint_with_perm_sync).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b43c8fe7405c8069c6cfa70c63a79b9948d72ac162c33f4169cea70f78a074ab'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b43c8fe7405c8069c6cfa70c63a79b9948d72ac162c33f4169cea70f78a074ab', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 564, 'function': 'SlackConnector.load_from_checkpoint_with_perm_sync'}, 'file': 'common/data_source/slack_connector.py', 'line': 564, 'function': 'load_from_checkpoint_with_perm_sync', 'agent_name': 'SlackConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.warning(_lineaje_payload)
         return []
 
     def build_dummy_checkpoint(self) -> ConnectorCheckpoint:
@@ -608,9 +791,22 @@ class SlackConnector(
             slack_error = e.response.get("error", "")
             if slack_error == "ratelimited":
                 retry_after = int(e.response.headers.get("Retry-After", 1))
+                _lineaje_payload = (f"Slack API rate limited during validation. Retry suggested after {retry_after} seconds. "
+                    "Proceeding with validation, but be aware that connector operations might be throttled.")
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in SlackConnector.validate_connector_settings).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:2ca94d1d0d2517e08b488c9cf8dd74b68e6f04abf1447e5596203897f44b70cf'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2ca94d1d0d2517e08b488c9cf8dd74b68e6f04abf1447e5596203897f44b70cf', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/slack_connector.py', 'line': 611, 'function': 'SlackConnector.validate_connector_settings'}, 'file': 'common/data_source/slack_connector.py', 'line': 611, 'function': 'validate_connector_settings', 'agent_name': 'SlackConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.warning(
-                    f"Slack API rate limited during validation. Retry suggested after {retry_after} seconds. "
-                    "Proceeding with validation, but be aware that connector operations might be throttled."
+                    _lineaje_payload
                 )
                 return
             elif slack_error == "missing_scope":
