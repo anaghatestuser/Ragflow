@@ -1,6 +1,24 @@
 
 
 """Confluence connector"""
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 import copy
 import json
 import logging
@@ -171,7 +189,20 @@ class OnyxConfluence:
             return credential_json, False
 
         # we need to refresh
-        logging.info("Renewing Confluence Cloud credentials...")
+        _lineaje_payload = "Renewing Confluence Cloud credentials..."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._renew_credentials).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:48c0ead82297e747d4ef9f138830f2d9655a15b8691dadd375ad08fda3ac4086'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:48c0ead82297e747d4ef9f138830f2d9655a15b8691dadd375ad08fda3ac4086', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 174, 'function': 'OnyxConfluence._renew_credentials'}, 'file': 'common/data_source/confluence_connector.py', 'line': 174, 'function': '_renew_credentials', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         new_credentials = confluence_refresh_tokens(
             OAUTH_CONFLUENCE_CLOUD_CLIENT_ID,
             OAUTH_CONFLUENCE_CLOUD_CLIENT_SECRET,
@@ -201,6 +232,18 @@ class OnyxConfluence:
             oauth2_dict["token"]["access_token"] = credentials[
                 "confluence_access_token"
             ]
+        # LINEAJE: runtime guardrail checks `oauth2_dict` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence._make_oauth2_dict).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `oauth2_dict` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:056915b3fe303d77f8a0cce72bb357250ef18a485b31a8343ee921ac8b9cb825'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:056915b3fe303d77f8a0cce72bb357250ef18a485b31a8343ee921ac8b9cb825', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 204, 'function': 'OnyxConfluence._make_oauth2_dict'}, 'file': 'common/data_source/confluence_connector.py', 'line': 204, 'function': '_make_oauth2_dict', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            oauth2_dict = _gr_client.enforce(_gr_site, oauth2_dict, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return oauth2_dict
 
     def _probe_connection(
@@ -227,24 +270,86 @@ class OnyxConfluence:
                         headers={"Authorization": f"Bearer {token}"},
                         timeout=10,
                     )
+                    # LINEAJE: runtime guardrail checks `r` as it flows from an external API to the agent, after the tool returns (in OnyxConfluence._probe_connection).
+                    #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+                    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `r` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:2140b5f9fa8fb4eea8d84ccf8e22faf85cde4ae97a9e8d490deeb61e9112edf2'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2140b5f9fa8fb4eea8d84ccf8e22faf85cde4ae97a9e8d490deeb61e9112edf2', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 225, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 225, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        r = _gr_client.enforce(_gr_site, r, content_type='application/json', variable_name='r', source_file=__file__, before_line=225)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     r.raise_for_status()
                 except HTTPError as e:
                     if e.response.status_code == 403:
+                        _lineaje_payload = "scoped token authenticated but not valid for probe endpoint (spaces)"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:626a2378db0e454aaa2d0b9a738c5532ac65e766416de099b0804b89de974806'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:626a2378db0e454aaa2d0b9a738c5532ac65e766416de099b0804b89de974806', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 233, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 233, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
                         logging.warning(
-                            "scoped token authenticated but not valid for probe endpoint (spaces)"
+                            _lineaje_payload
                         )
                     else:
                         if "WWW-Authenticate" in e.response.headers:
+                            _lineaje_payload = f"WWW-Authenticate: {e.response.headers['WWW-Authenticate']}"
+                            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                            #   Do not remove without review. site_id='site:sha256:07c9f8fa68560987f5493a320b9d63a88641318041f67d28b60e26ac322c44c1'
+                            _gr_client = _lineaje_load_gr_client()
+                            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:07c9f8fa68560987f5493a320b9d63a88641318041f67d28b60e26ac322c44c1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 238, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 238, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                            try:
+                                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                            except _gr_client.GuardrailUnavailableError:
+                                pass
+                            except PermissionError:
+                                pass
                             logging.warning(
-                                f"WWW-Authenticate: {e.response.headers['WWW-Authenticate']}"
+                                _lineaje_payload
                             )
-                            logging.warning(f"Full error: {e.response.text}")
+                            _lineaje_payload = f"Full error: {e.response.text}"
+                            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                            #   Do not remove without review. site_id='site:sha256:64937617676412ff32c5f7451dd024d4791d3ed9f1ff3bba18381b94a6a166a2'
+                            _gr_client = _lineaje_load_gr_client()
+                            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:64937617676412ff32c5f7451dd024d4791d3ed9f1ff3bba18381b94a6a166a2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 241, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 241, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                            try:
+                                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                            except _gr_client.GuardrailUnavailableError:
+                                pass
+                            except PermissionError:
+                                pass
+                            logging.warning(_lineaje_payload)
                         raise e
                 return
 
             # probe connection with direct client, no retries
             if "confluence_refresh_token" in credentials:
-                logging.info("Probing Confluence with OAuth Access Token.")
+                _lineaje_payload = "Probing Confluence with OAuth Access Token."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:935d9b2f958d286ef65288e84594a2fe24b1bca70bc806592ce5a8ea5497b419'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:935d9b2f958d286ef65288e84594a2fe24b1bca70bc806592ce5a8ea5497b419', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 247, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 247, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
 
                 oauth2_dict: dict[str, Any] = OnyxConfluence._make_oauth2_dict(
                     credentials
@@ -256,10 +361,36 @@ class OnyxConfluence:
                     url=url, oauth2=oauth2_dict, **merged_kwargs
                 )
             else:
-                logging.info("Probing Confluence with Personal Access Token.")
+                _lineaje_payload = "Probing Confluence with Personal Access Token."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e5bea01678d362b394476312a9f173d1854561b1ed2a424fcd89bd364af6e4fe'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e5bea01678d362b394476312a9f173d1854561b1ed2a424fcd89bd364af6e4fe', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 259, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 259, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 url = self._url
                 if self._is_cloud:
-                    logging.info("running with cloud client")
+                    _lineaje_payload = "running with cloud client"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:e95174156f4b87036cd22e07c31713e9c74095619a92b939786ad80f873171ae'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e95174156f4b87036cd22e07c31713e9c74095619a92b939786ad80f873171ae', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 262, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 262, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.info(_lineaje_payload)
                     confluence_client_with_minimal_retries = Confluence(
                         url=url,
                         username=credentials["confluence_username"],
@@ -294,7 +425,20 @@ class OnyxConfluence:
                     "is_cloud is set correctly."
                 )
 
-            logging.info("Confluence probe succeeded.")
+            _lineaje_payload = "Confluence probe succeeded."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._probe_connection).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:77c5cb3072fb3f4cb750ca1b97a4461bf3faeeabca9333942ee8034a5f59f54d'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:77c5cb3072fb3f4cb750ca1b97a4461bf3faeeabca9333942ee8034a5f59f54d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 297, 'function': 'OnyxConfluence._probe_connection'}, 'file': 'common/data_source/confluence_connector.py', 'line': 297, 'function': '_probe_connection', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
 
     def _initialize_connection(
         self,
@@ -322,14 +466,40 @@ class OnyxConfluence:
 
         # probe connection with direct client, no retries
         if "confluence_refresh_token" in credentials:
-            logging.info("Connecting to Confluence Cloud with OAuth Access Token.")
+            _lineaje_payload = "Connecting to Confluence Cloud with OAuth Access Token."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._initialize_connection_helper).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:509fc0635ed0eb04dc0e549bf4e16335302b563666086e8438db99dcba8b822a'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:509fc0635ed0eb04dc0e549bf4e16335302b563666086e8438db99dcba8b822a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 325, 'function': 'OnyxConfluence._initialize_connection_helper'}, 'file': 'common/data_source/confluence_connector.py', 'line': 325, 'function': '_initialize_connection_helper', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
 
             oauth2_dict: dict[str, Any] = OnyxConfluence._make_oauth2_dict(credentials)
             url = f"https://api.atlassian.com/ex/confluence/{credentials['cloud_id']}"
             confluence = Confluence(url=url, oauth2=oauth2_dict, **kwargs)
         else:
+            _lineaje_payload = f"Connecting to Confluence with Personal Access Token as user: {credentials['confluence_username']}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._initialize_connection_helper).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:7d6e327bc9f2ee83722383cd9e61dbddca9ed586a8655a37a12cc074f38f89a2'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7d6e327bc9f2ee83722383cd9e61dbddca9ed586a8655a37a12cc074f38f89a2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 331, 'function': 'OnyxConfluence._initialize_connection_helper'}, 'file': 'common/data_source/confluence_connector.py', 'line': 331, 'function': '_initialize_connection_helper', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.info(
-                f"Connecting to Confluence with Personal Access Token as user: {credentials['confluence_username']}"
+                _lineaje_payload
             )
             if self._is_cloud:
                 confluence = Confluence(
@@ -345,6 +515,18 @@ class OnyxConfluence:
                     **kwargs,
                 )
 
+        # LINEAJE: runtime guardrail checks `confluence` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence._initialize_connection_helper).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `confluence` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:74faf1cf83832fe8d81d7087572d217a2a3ad5ec2635b3c1ed518c1923206cec'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:74faf1cf83832fe8d81d7087572d217a2a3ad5ec2635b3c1ed518c1923206cec', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 348, 'function': 'OnyxConfluence._initialize_connection_helper'}, 'file': 'common/data_source/confluence_connector.py', 'line': 348, 'function': '_initialize_connection_helper', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            confluence = _gr_client.enforce(_gr_site, confluence, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return confluence
 
     # https://developer.atlassian.com/cloud/confluence/rate-limiting/
@@ -395,9 +577,22 @@ class OnyxConfluence:
 
                 except HTTPError as e:
                     delay_until = _handle_http_error(e, attempt)
+                    _lineaje_payload = (f"HTTPError in confluence call. "
+                        f"Retrying in {delay_until} seconds...")
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence.wrapped_call).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:b9865266000415d0a214b006e8d901f7d5051614e1976eeed28ff9b9a3695f94'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b9865266000415d0a214b006e8d901f7d5051614e1976eeed28ff9b9a3695f94', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 398, 'function': 'OnyxConfluence._make_rate_limited_confluence_method.wrapped_call'}, 'file': 'common/data_source/confluence_connector.py', 'line': 398, 'function': 'wrapped_call', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     logging.warning(
-                        f"HTTPError in confluence call. "
-                        f"Retrying in {delay_until} seconds..."
+                        _lineaje_payload
                     )
                     while time.monotonic() < delay_until:
                         # in the future, check a signal here to exit
@@ -408,11 +603,36 @@ class OnyxConfluence:
                     if attempt == MAX_RETRIES - 1:
                         raise e
 
+                    _lineaje_payload = "Confluence Client raised an AttributeError. Retrying..."
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence.wrapped_call).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:387da9913f5da65d4562c4c49e8b462afb94bebc80e8702341c2ab52b6338f2f'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:387da9913f5da65d4562c4c49e8b462afb94bebc80e8702341c2ab52b6338f2f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 411, 'function': 'OnyxConfluence._make_rate_limited_confluence_method.wrapped_call'}, 'file': 'common/data_source/confluence_connector.py', 'line': 411, 'function': 'wrapped_call', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     logging.exception(
-                        "Confluence Client raised an AttributeError. Retrying..."
+                        _lineaje_payload
                     )
                     time.sleep(5)
 
+        # LINEAJE: runtime guardrail checks `wrapped_call` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence._make_rate_limited_confluence_method).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `wrapped_call` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:addbe040e2925a9c30dd89690b8a0dcca3e85744c14f82e1f33b63113572fb6c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:addbe040e2925a9c30dd89690b8a0dcca3e85744c14f82e1f33b63113572fb6c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 416, 'function': 'OnyxConfluence._make_rate_limited_confluence_method'}, 'file': 'common/data_source/confluence_connector.py', 'line': 416, 'function': '_make_rate_limited_confluence_method', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            wrapped_call = _gr_client.enforce(_gr_site, wrapped_call, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return wrapped_call
 
     def __getattr__(self, name: str) -> Any:
@@ -426,10 +646,34 @@ class OnyxConfluence:
 
         # If it's not a method, just return it after ensuring token validity
         if not callable(attr):
+            # LINEAJE: runtime guardrail checks `attr` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence.__getattr__).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `attr` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a333ec46ea79a786477d5eba3d1b34a29b7752d8d5689063c6b583ac838f82d6'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a333ec46ea79a786477d5eba3d1b34a29b7752d8d5689063c6b583ac838f82d6', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 429, 'function': 'OnyxConfluence.__getattr__'}, 'file': 'common/data_source/confluence_connector.py', 'line': 429, 'function': '__getattr__', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                attr = _gr_client.enforce(_gr_site, attr, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return attr
 
         # skip methods that start with "_"
         if name.startswith("_"):
+            # LINEAJE: runtime guardrail checks `attr` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence.__getattr__).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `attr` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:22f2e83cf0f7c8a83c3625ced1aa44e9f5ed8fc229fafb8251e5a683c95f8c22'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:22f2e83cf0f7c8a83c3625ced1aa44e9f5ed8fc229fafb8251e5a683c95f8c22', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 433, 'function': 'OnyxConfluence.__getattr__'}, 'file': 'common/data_source/confluence_connector.py', 'line': 433, 'function': '__getattr__', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                attr = _gr_client.enforce(_gr_site, attr, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return attr
 
         # wrap the method with our retry handler
@@ -437,6 +681,18 @@ class OnyxConfluence:
             self._make_rate_limited_confluence_method(name, self._credentials_provider)
         )
 
+        # LINEAJE: runtime guardrail checks `rate_limited_method` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence.__getattr__).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `rate_limited_method` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:178ef705e32f69bae0262e2c1333bb0315124cec3ac2dded6c82fb18ba84240d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:178ef705e32f69bae0262e2c1333bb0315124cec3ac2dded6c82fb18ba84240d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 440, 'function': 'OnyxConfluence.__getattr__'}, 'file': 'common/data_source/confluence_connector.py', 'line': 440, 'function': '__getattr__', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            rate_limited_method = _gr_client.enforce(_gr_site, rate_limited_method, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return rate_limited_method
 
     def _try_one_by_one_for_paginated_url(
@@ -469,7 +725,20 @@ class OnyxConfluence:
                     url_suffix, "start", str(initial_start + ind)
                 )
                 temp_url_suffix = update_param_in_path(temp_url_suffix, "limit", "1")
-                logging.info(f"Making recovery confluence call to {temp_url_suffix}")
+                _lineaje_payload = f"Making recovery confluence call to {temp_url_suffix}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._try_one_by_one_for_paginated_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:ee7c6968d6377f84f4e14b3fd23a01745eb5c38236b0f92cd9d13712b62ebdee'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ee7c6968d6377f84f4e14b3fd23a01745eb5c38236b0f92cd9d13712b62ebdee', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 472, 'function': 'OnyxConfluence._try_one_by_one_for_paginated_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 472, 'function': '_try_one_by_one_for_paginated_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 raw_response = self.get(path=temp_url_suffix, advanced_mode=True)
                 raw_response.raise_for_status()
 
@@ -478,15 +747,41 @@ class OnyxConfluence:
 
                 if not latest_results:
                     # no more results, break out of the loop
+                    _lineaje_payload = (f"No results found for call '{temp_url_suffix}'"
+                        "Stopping pagination.")
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._try_one_by_one_for_paginated_url).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:5cb49f5a5aaf3a74fe65c68221124dbed1b295db61d30f6c4f7c20e32b391e8b'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5cb49f5a5aaf3a74fe65c68221124dbed1b295db61d30f6c4f7c20e32b391e8b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 481, 'function': 'OnyxConfluence._try_one_by_one_for_paginated_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 481, 'function': '_try_one_by_one_for_paginated_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     logging.info(
-                        f"No results found for call '{temp_url_suffix}'"
-                        "Stopping pagination."
+                        _lineaje_payload
                     )
                     found_empty_page = True
                     break
             except Exception:
+                _lineaje_payload = f"Error in confluence call to {temp_url_suffix}. Continuing."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._try_one_by_one_for_paginated_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9b948fe4ea69f1d0cbac6cfaa5a8cce8ff84290abe10342bfe3dbb6bc00618c5'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b948fe4ea69f1d0cbac6cfaa5a8cce8ff84290abe10342bfe3dbb6bc00618c5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 488, 'function': 'OnyxConfluence._try_one_by_one_for_paginated_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 488, 'function': '_try_one_by_one_for_paginated_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.exception(
-                    f"Error in confluence call to {temp_url_suffix}. Continuing."
+                    _lineaje_payload
                 )
 
         if found_empty_page:
@@ -512,7 +807,20 @@ class OnyxConfluence:
         url_suffix = update_param_in_path(url_suffix, "limit", str(limit))
 
         while url_suffix:
-            logging.debug(f"Making confluence call to {url_suffix}")
+            _lineaje_payload = f"Making confluence call to {url_suffix}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:bfab9ef6d8da8b12be2d857155c4998044aeacf01b69ffe272149a46e75abb59'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bfab9ef6d8da8b12be2d857155c4998044aeacf01b69ffe272149a46e75abb59', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 515, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 515, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             try:
                 raw_response = self.get(
                     path=url_suffix,
@@ -523,21 +831,60 @@ class OnyxConfluence:
                     },
                 )
             except Exception as e:
-                logging.exception(f"Error in confluence call to {url_suffix}")
+                _lineaje_payload = f"Error in confluence call to {url_suffix}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:a1d9bb235719f36b6379d64739a890f38b5a1f9160cfb811e82d08ffca69c44f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a1d9bb235719f36b6379d64739a890f38b5a1f9160cfb811e82d08ffca69c44f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 526, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 526, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.exception(_lineaje_payload)
                 raise e
 
             try:
                 raw_response.raise_for_status()
             except Exception as e:
-                logging.warning(f"Error in confluence call to {url_suffix}")
+                _lineaje_payload = f"Error in confluence call to {url_suffix}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:76f8ac10b66f6b6d548f4fd6ac6581c5f6102c93cf3a33cb499e1d126a414ff6'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:76f8ac10b66f6b6d548f4fd6ac6581c5f6102c93cf3a33cb499e1d126a414ff6', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 532, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 532, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
 
                 # If the problematic expansion is in the url, replace it
                 # with the replacement expansion and try again
                 # If that fails, raise the error
                 if _PROBLEMATIC_EXPANSIONS in url_suffix:
+                    _lineaje_payload = (f"Replacing {_PROBLEMATIC_EXPANSIONS} with {_REPLACEMENT_EXPANSIONS}"
+                        " and trying again.")
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:30c19eb7d3166f0d0e69a42eefa5b3e7295bb82abb040d26ca5125496195e9f0'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:30c19eb7d3166f0d0e69a42eefa5b3e7295bb82abb040d26ca5125496195e9f0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 538, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 538, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     logging.warning(
-                        f"Replacing {_PROBLEMATIC_EXPANSIONS} with {_REPLACEMENT_EXPANSIONS}"
-                        " and trying again."
+                        _lineaje_payload
                     )
                     url_suffix = url_suffix.replace(
                         _PROBLEMATIC_EXPANSIONS,
@@ -571,19 +918,45 @@ class OnyxConfluence:
                     continue
 
                 else:
-                    logging.exception(
-                        f"Error in confluence call to {url_suffix} \n"
+                    _lineaje_payload = (f"Error in confluence call to {url_suffix} \n"
                         f"Raw Response Text: {raw_response.text} \n"
                         f"Full Response: {raw_response.__dict__} \n"
-                        f"Error: {e} \n"
+                        f"Error: {e} \n")
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:c84f6718cf10e72026cb5d0708ba194356f0597ac5b2f423a8864d1b3b37abf0'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c84f6718cf10e72026cb5d0708ba194356f0597ac5b2f423a8864d1b3b37abf0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 574, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 574, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.exception(
+                        _lineaje_payload
                     )
                     raise
 
             try:
                 next_response = raw_response.json()
             except Exception as e:
+                _lineaje_payload = f"Failed to parse response as JSON. Response: {raw_response.__dict__}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:c7a58605a0a0d3291a6f763595144f90c8cea5c9d7fba8544aebf364210b96f9'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c7a58605a0a0d3291a6f763595144f90c8cea5c9d7fba8544aebf364210b96f9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 585, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 585, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.exception(
-                    f"Failed to parse response as JSON. Response: {raw_response.__dict__}"
+                    _lineaje_payload
                 )
                 raise e
 
@@ -640,9 +1013,22 @@ class OnyxConfluence:
             # 0 results. This is a bug with Confluence, so we need to check for it and
             # stop paginating.
             if url_suffix and not results:
+                _lineaje_payload = (f"No results found for call '{old_url_suffix}' despite next link "
+                    "being present. Stopping pagination.")
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence._paginate_url).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:0fced1cf2c7f2da2019bea16e782bd1b954e9ec5aac070db21bb9eb21a88f2d0'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0fced1cf2c7f2da2019bea16e782bd1b954e9ec5aac070db21bb9eb21a88f2d0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 643, 'function': 'OnyxConfluence._paginate_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 643, 'function': '_paginate_url', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.info(
-                    f"No results found for call '{old_url_suffix}' despite next link "
-                    "being present. Stopping pagination."
+                    _lineaje_payload
                 )
                 break
 
@@ -679,7 +1065,20 @@ class OnyxConfluence:
                 cql_url, limit=limit, next_page_callback=next_page_callback
             )
         except Exception as e:
-            logging.exception(f"Error in paginated_page_retrieval: {e}")
+            _lineaje_payload = f"Error in paginated_page_retrieval: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence.paginated_page_retrieval).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:7afe832a3270e1430d2e7c8da30c780dc18ed6753fdd9474c447b77413113bee'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7afe832a3270e1430d2e7c8da30c780dc18ed6753fdd9474c447b77413113bee', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 682, 'function': 'OnyxConfluence.paginated_page_retrieval'}, 'file': 'common/data_source/confluence_connector.py', 'line': 682, 'function': 'paginated_page_retrieval', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
             raise e
 
     def cql_paginate_all_expansions(
@@ -814,11 +1213,37 @@ class OnyxConfluence:
             "params": [space_key],
         }
         response = self.post(url, data=data)
-        logging.debug(f"jsonrpc response: {response}")
+        _lineaje_payload = f"jsonrpc response: {response}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence.get_all_space_permissions_server).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:afd1a574b9e04ad4e9ad65159f1d6b7bbceb0eaed4a1eca6411bf5cb3d966ffb'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:afd1a574b9e04ad4e9ad65159f1d6b7bbceb0eaed4a1eca6411bf5cb3d966ffb', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 817, 'function': 'OnyxConfluence.get_all_space_permissions_server'}, 'file': 'common/data_source/confluence_connector.py', 'line': 817, 'function': 'get_all_space_permissions_server', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         if not response.get("result"):
+            _lineaje_payload = (f"No jsonrpc response for space permissions for space {space_key}"
+                f"\nResponse: {response}")
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in OnyxConfluence.get_all_space_permissions_server).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:5cc8cd72eadad73a9c7b3552aa5409654f1fad43b280488d867691c37e699f84'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5cc8cd72eadad73a9c7b3552aa5409654f1fad43b280488d867691c37e699f84', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 819, 'function': 'OnyxConfluence.get_all_space_permissions_server'}, 'file': 'common/data_source/confluence_connector.py', 'line': 819, 'function': 'get_all_space_permissions_server', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                f"No jsonrpc response for space permissions for space {space_key}"
-                f"\nResponse: {response}"
+                _lineaje_payload
             )
 
         return response.get("result", [])
@@ -847,6 +1272,18 @@ class OnyxConfluence:
                     "The calling user does not have permission", reason=e
                 )
             raise
+        # LINEAJE: runtime guardrail checks `response` as it flows from the agent to the user interface, before it leaves the application (in OnyxConfluence.get_current_user).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:58faddb5bacb6b1e9c93e25b14d0f2145cc63644a8a12cd4406ea06188297b1b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:58faddb5bacb6b1e9c93e25b14d0f2145cc63644a8a12cd4406ea06188297b1b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 850, 'function': 'OnyxConfluence.get_current_user'}, 'file': 'common/data_source/confluence_connector.py', 'line': 850, 'function': 'get_current_user', 'agent_name': 'OnyxConfluence', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return response
 
 
@@ -859,7 +1296,20 @@ def get_user_email_from_username__server(
             response = confluence_client.get_mobile_parameters(user_name)
             email = response.get("email")
         except Exception:
-            logging.warning(f"failed to get confluence email for {user_name}")
+            _lineaje_payload = f"failed to get confluence email for {user_name}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in get_user_email_from_username__server).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f4debdef548799d6b3265b39b59077ac7a3627c34b0ef4965963cab9b144fc62'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f4debdef548799d6b3265b39b59077ac7a3627c34b0ef4965963cab9b144fc62', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 862, 'function': 'get_user_email_from_username__server'}, 'file': 'common/data_source/confluence_connector.py', 'line': 862, 'function': 'get_user_email_from_username__server', 'agent_name': 'get_user_email_from_username__server', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             # For now, we'll just return None and log a warning. This means
             # we will keep retrying to get the email every group sync.
             email = None
@@ -936,8 +1386,21 @@ def extract_text_from_confluence_html(
             else user.get("ri:userkey")
         )
         if not user_id:
+            _lineaje_payload = "ri:userkey not found in ri:user element. " f"Found attrs: {user.attrs}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:74781eb8ce75d8bd5f0c4790cbf95846cf0b9a227b14d83717ea9c8b684221d6'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:74781eb8ce75d8bd5f0c4790cbf95846cf0b9a227b14d83717ea9c8b684221d6', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 939, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 939, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                "ri:userkey not found in ri:user element. " f"Found attrs: {user.attrs}"
+                _lineaje_payload
             )
             continue
         # Include @ sign for tagging, more clear for LLM
@@ -950,22 +1413,61 @@ def extract_text_from_confluence_html(
 
         page_data = html_page_reference.find("ri:page")
         if not page_data:
+            _lineaje_payload = f"Skipping retrieval of {html_page_reference} because because page data is missing"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a46dbda1984ca0d0c7d17ed2cadd643b20946affd7261acb1f01fb0d5cea17c4'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a46dbda1984ca0d0c7d17ed2cadd643b20946affd7261acb1f01fb0d5cea17c4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 953, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 953, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                f"Skipping retrieval of {html_page_reference} because because page data is missing"
+                _lineaje_payload
             )
             continue
 
         page_title = page_data.attrs.get("ri:content-title")
         if not page_title:
             # only fetch pages that have a title
+            _lineaje_payload = f"Skipping retrieval of {html_page_reference} because it has no title"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9a0eeb38d1dbe68990d8efcb28ea18765ef6e935a163481bfa88b5d587a97845'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9a0eeb38d1dbe68990d8efcb28ea18765ef6e935a163481bfa88b5d587a97845', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 961, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 961, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                f"Skipping retrieval of {html_page_reference} because it has no title"
+                _lineaje_payload
             )
             continue
 
         if page_title in fetched_titles:
             # prevent recursive fetching of pages
-            logging.debug(f"Skipping {page_title} because it has already been fetched")
+            _lineaje_payload = f"Skipping {page_title} because it has already been fetched"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:32af03281a2c4d4dca7a68528ad67b8d50d32728597713820ac76a7b10fe92d4'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:32af03281a2c4d4dca7a68528ad67b8d50d32728597713820ac76a7b10fe92d4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 968, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 968, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             continue
 
         fetched_titles.add(page_title)
@@ -984,8 +1486,21 @@ def extract_text_from_confluence_html(
                 page_contents = page
                 break
         except Exception as e:
+            _lineaje_payload = f"Error getting page contents for object {confluence_object}: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:77becf8c86bda2868f799da7ff8e142dd5aa92cad90a104730a70497bfe0e61b'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:77becf8c86bda2868f799da7ff8e142dd5aa92cad90a104730a70497bfe0e61b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 987, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 987, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                f"Error getting page contents for object {confluence_object}: {e}"
+                _lineaje_payload
             )
             continue
 
@@ -1007,7 +1522,20 @@ def extract_text_from_confluence_html(
             text_from_link = html_link_body.text
             html_link_body.replaceWith(f"(LINK TEXT: {text_from_link})")
         except Exception as e:
-            logging.warning(f"Error processing ac:link-body: {e}")
+            _lineaje_payload = f"Error processing ac:link-body: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:eaf2531951f54aedfc443a3da57f00c1339e00d59b7ea0faa71baf5736292385'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:eaf2531951f54aedfc443a3da57f00c1339e00d59b7ea0faa71baf5736292385', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1010, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1010, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
     for html_attachment in soup.findAll("ri:attachment"):
         # This extracts the text from inline attachments in the page so they can be
@@ -1017,7 +1545,20 @@ def extract_text_from_confluence_html(
                 f"<attachment>{sanitize_attachment_title(html_attachment.attrs['ri:filename'])}</attachment>"
             )  # to be replaced later
         except Exception as e:
-            logging.warning(f"Error processing ac:attachment: {e}")
+            _lineaje_payload = f"Error processing ac:attachment: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in extract_text_from_confluence_html).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a8280765b084be1cf2765ed753bacd3db060e780b0d878a5286751f72b360da7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a8280765b084be1cf2765ed753bacd3db060e780b0d878a5286751f72b360da7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1020, 'function': 'extract_text_from_confluence_html'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1020, 'function': 'extract_text_from_confluence_html', 'agent_name': 'extract_text_from_confluence_html', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
     return format_document_soup(soup)
 
@@ -1116,8 +1657,21 @@ def _make_attachment_link(
     # if "api.atlassian.com" in confluence_client.url:
         # https://developer.atlassian.com/cloud/confluence/rest/v1/api-group-content---attachments/#api-wiki-rest-api-content-id-child-attachment-attachmentid-download-get
         if not parent_content_id:
+            _lineaje_payload = "parent_content_id is required to download attachments from Confluence Cloud!"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _make_attachment_link).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9e43245329a41e8c0ff4360dbd600bbc7b0d28e89bb44fff531cc7ef4ac2c215'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9e43245329a41e8c0ff4360dbd600bbc7b0d28e89bb44fff531cc7ef4ac2c215', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1119, 'function': '_make_attachment_link'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1119, 'function': '_make_attachment_link', 'agent_name': '_make_attachment_link', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                "parent_content_id is required to download attachments from Confluence Cloud!"
+                _lineaje_payload
             )
             return None
 
@@ -1128,6 +1682,18 @@ def _make_attachment_link(
     else:
         download_link = confluence_client.url + attachment["_links"]["download"]
 
+    # LINEAJE: runtime guardrail checks `download_link` as it flows from the agent to the user interface, before it leaves the application (in _make_attachment_link).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `download_link` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:6eabcb25515b633e621069a7ba51ff7ff134765d6cd9821d784d6ca7a73de2b1'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6eabcb25515b633e621069a7ba51ff7ff134765d6cd9821d784d6ca7a73de2b1', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1131, 'function': '_make_attachment_link'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1131, 'function': '_make_attachment_link', 'agent_name': '_make_attachment_link', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        download_link = _gr_client.enforce(_gr_site, download_link, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return download_link
 
 
@@ -1183,10 +1749,23 @@ def process_attachment(
                 )
         else:
             if attachment_size > CONFLUENCE_CONNECTOR_ATTACHMENT_SIZE_THRESHOLD:
-                logging.warning(
-                    f"Skipping {attachment_link} due to size. "
+                _lineaje_payload = (f"Skipping {attachment_link} due to size. "
                     f"size={attachment_size} "
-                    f"threshold={CONFLUENCE_CONNECTOR_ATTACHMENT_SIZE_THRESHOLD}"
+                    f"threshold={CONFLUENCE_CONNECTOR_ATTACHMENT_SIZE_THRESHOLD}")
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in process_attachment).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:f28d68745bf8bf7289afea3731f06ba731bbe419c0d6e91ab3b071e6160272ff'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f28d68745bf8bf7289afea3731f06ba731bbe419c0d6e91ab3b071e6160272ff', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1186, 'function': 'process_attachment'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1186, 'function': 'process_attachment', 'agent_name': 'process_attachment', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(
+                    _lineaje_payload
                 )
                 return AttachmentProcessingResult(
                     text=None,
@@ -1195,18 +1774,44 @@ def process_attachment(
                     error=f"Attachment text too long: {attachment_size} chars",
                 )
 
-        logging.info(
-            f"Downloading attachment: "
+        _lineaje_payload = (f"Downloading attachment: "
             f"title={attachment['title']} "
             f"length={attachment_size} "
-            f"link={attachment_link}"
+            f"link={attachment_link}")
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in process_attachment).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c3a3184e5f21b2f3fbe2125993c9fca26a58778fde434d596462cd2ce4f11ae8'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c3a3184e5f21b2f3fbe2125993c9fca26a58778fde434d596462cd2ce4f11ae8', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1198, 'function': 'process_attachment'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1198, 'function': 'process_attachment', 'agent_name': 'process_attachment', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(
+            _lineaje_payload
         )
 
         # Download the attachment
         resp: requests.Response = confluence_client._session.get(attachment_link)
         if resp.status_code != 200:
+            _lineaje_payload = f"Failed to fetch {attachment_link} with status code {resp.status_code}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in process_attachment).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b4d3d0c41294ce249062db47a90429b04362f90aa50600f3bfb3619d0b51b687'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b4d3d0c41294ce249062db47a90429b04362f90aa50600f3bfb3619d0b51b687', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1208, 'function': 'process_attachment'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1208, 'function': 'process_attachment', 'agent_name': 'process_attachment', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.warning(
-                f"Failed to fetch {attachment_link} with status code {resp.status_code}"
+                _lineaje_payload
             )
             return AttachmentProcessingResult(
                 text=None,
@@ -1231,6 +1836,18 @@ def process_attachment(
         try:
             return AttachmentProcessingResult(text="",file_blob=raw_bytes, file_name=attachment.get("title", "unknown_title"), error=None)
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in process_attachment).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9d1b25bc2504d1976aee7f31a4b9289420388be366d4d4b6c23396fa285c1b58'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9d1b25bc2504d1976aee7f31a4b9289420388be366d4d4b6c23396fa285c1b58', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1234, 'function': 'process_attachment'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1234, 'function': 'process_attachment', 'agent_name': 'process_attachment', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
             return AttachmentProcessingResult(
                 text=None, file_blob=None, file_name=None, error=f"Failed to extract text: {e}"
@@ -1257,15 +1874,55 @@ def convert_attachment_to_content(
     media_type = attachment.get("metadata", {}).get("mediaType", "")
     # Quick check for unsupported types:
     if media_type.startswith("video/") or media_type == "application/gliffy+json":
+        _lineaje_payload = f"Skipping unsupported attachment type: '{media_type}' for {attachment['title']}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in convert_attachment_to_content).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:262f7abd94ab0601bc2ca2326d9b8b084ccf260688d48a5a83f446b56a4f6756'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:262f7abd94ab0601bc2ca2326d9b8b084ccf260688d48a5a83f446b56a4f6756', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1260, 'function': 'convert_attachment_to_content'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1260, 'function': 'convert_attachment_to_content', 'agent_name': 'convert_attachment_to_content', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.warning(
-            f"Skipping unsupported attachment type: '{media_type}' for {attachment['title']}"
+            _lineaje_payload
         )
         return None
 
+    # LINEAJE: runtime guardrail checks `confluence_client` as it flows from file storage to the agent (in convert_attachment_to_content).
+    #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `confluence_client` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:6da12873a8e6f84d1442e663e1ac22e7348e659b55555a40cc1b42499e19ac0a'
+    _lineaje_confluence_client_evidence = {'confluence_client': confluence_client, 'name': attachment, 'content_type': page_id, 'project': 'tree'}
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6da12873a8e6f84d1442e663e1ac22e7348e659b55555a40cc1b42499e19ac0a', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1265, 'function': 'convert_attachment_to_content'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1265, 'function': 'convert_attachment_to_content', 'agent_name': 'convert_attachment_to_content', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_confluence_client_evidence = _gr_client.enforce(_gr_site, _lineaje_confluence_client_evidence, content_type='application/json')
+        confluence_client = _lineaje_confluence_client_evidence.get('confluence_client', confluence_client) if isinstance(_lineaje_confluence_client_evidence, dict) else confluence_client
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        raise
     result = process_attachment(confluence_client, attachment, page_id, allow_images)
     if result.error is not None:
+        _lineaje_payload = f"Attachment {attachment['title']} encountered error: {result.error}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in convert_attachment_to_content).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:d0fecd77fcb6887cd7cf449b9a307748fa77c29095999d8a2daa45de0871c544'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d0fecd77fcb6887cd7cf449b9a307748fa77c29095999d8a2daa45de0871c544', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1267, 'function': 'convert_attachment_to_content'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1267, 'function': 'convert_attachment_to_content', 'agent_name': 'convert_attachment_to_content', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.warning(
-            f"Attachment {attachment['title']} encountered error: {result.error}"
+            _lineaje_payload
         )
         return None
 
@@ -1362,15 +2019,52 @@ class ConfluenceConnector(
         self.continue_on_failure = continue_on_failure
 
     def set_allow_images(self, value: bool) -> None:
-        logging.info(f"Setting allow_images to {value}.")
+        _lineaje_payload = f"Setting allow_images to {value}."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector.set_allow_images).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9033d6a9ee9a248c0987ebefb744c2242ed31071e89e3202fb972d31965f8a86'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9033d6a9ee9a248c0987ebefb744c2242ed31071e89e3202fb972d31965f8a86', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1365, 'function': 'ConfluenceConnector.set_allow_images'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1365, 'function': 'set_allow_images', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         self.allow_images = value
 
     def _adjust_start_for_query(
         self, start: SecondsSinceUnixEpoch | None
     ) -> SecondsSinceUnixEpoch | None:
         if not start or start <= 0:
+            # LINEAJE: runtime guardrail checks `start` as it flows from the agent to the user interface, before it leaves the application (in ConfluenceConnector._adjust_start_for_query).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `start` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:1d85837540e37c40447d46f6b776bbf6a9423874a4ff466a87244e1373dda78a'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1d85837540e37c40447d46f6b776bbf6a9423874a4ff466a87244e1373dda78a', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1372, 'function': 'ConfluenceConnector._adjust_start_for_query'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1372, 'function': '_adjust_start_for_query', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                start = _gr_client.enforce(_gr_site, start, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return start
         if self.time_buffer_seconds <= 0:
+            # LINEAJE: runtime guardrail checks `start` as it flows from the agent to the user interface, before it leaves the application (in ConfluenceConnector._adjust_start_for_query).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `start` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:961bd3220a2471f3ed6f1647649a3b01177ddc6d13b6a28cf582d4d124a1e3d0'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:961bd3220a2471f3ed6f1647649a3b01177ddc6d13b6a28cf582d4d124a1e3d0', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1374, 'function': 'ConfluenceConnector._adjust_start_for_query'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1374, 'function': '_adjust_start_for_query', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                start = _gr_client.enforce(_gr_site, start, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return start
         return max(0.0, start - self.time_buffer_seconds)
 
@@ -1454,6 +2148,18 @@ class ConfluenceConnector(
             page_query += f" and lastmodified <= '{formatted_end_time}'"
 
         page_query += " order by lastmodified asc"
+        # LINEAJE: runtime guardrail checks `page_query` as it flows from a tool to the user interface, before it leaves the application (in ConfluenceConnector._construct_page_cql_query).
+        #   Detected: this statement moves data from a tool to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012, AI_DAT_SEC_027; sensitive values in `page_query` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b94c01663b40846875e71c2c4dc6afd1ec9d739815cd8b24c876e95ee3c54563'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b94c01663b40846875e71c2c4dc6afd1ec9d739815cd8b24c876e95ee3c54563', phase='data_egress', boundary={'source': 'tool_result', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='tool', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1457, 'function': 'ConfluenceConnector._construct_page_cql_query'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1457, 'function': '_construct_page_cql_query', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            page_query = _gr_client.enforce(_gr_site, page_query, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return page_query
 
     def _construct_attachment_query(
@@ -1479,6 +2185,18 @@ class ConfluenceConnector(
             attachment_query += f" and lastmodified <= '{formatted_end_time}'"
 
         attachment_query += " order by lastmodified asc"
+        # LINEAJE: runtime guardrail checks `attachment_query` as it flows from the agent to the user interface, before it leaves the application (in ConfluenceConnector._construct_attachment_query).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `attachment_query` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9f2433b1bfe65060b76f54a68dc2c6341a575f601f3414bb3f2724f3e4eacfe6'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9f2433b1bfe65060b76f54a68dc2c6341a575f601f3414bb3f2724f3e4eacfe6', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1482, 'function': 'ConfluenceConnector._construct_attachment_query'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1482, 'function': '_construct_attachment_query', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            attachment_query = _gr_client.enforce(_gr_site, attachment_query, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return attachment_query
 
     def _get_comment_string_for_page_id(self, page_id: str) -> str:
@@ -1497,6 +2215,18 @@ class ConfluenceConnector(
                 confluence_object=comment,
                 fetched_titles=set(),
             )
+        # LINEAJE: runtime guardrail checks `comment_string` as it flows from a tool to the user interface, before it leaves the application (in ConfluenceConnector._get_comment_string_for_page_id).
+        #   Detected: this statement moves data from a tool to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012, AI_DAT_SEC_027; sensitive values in `comment_string` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f4bae51bc9d229c8697e84bbaf75747b0152253dbedcb000467662f3efddba37'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f4bae51bc9d229c8697e84bbaf75747b0152253dbedcb000467662f3efddba37', phase='data_egress', boundary={'source': 'tool_result', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='tool', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1500, 'function': 'ConfluenceConnector._get_comment_string_for_page_id'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1500, 'function': '_get_comment_string_for_page_id', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            comment_string = _gr_client.enforce(_gr_site, comment_string, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return comment_string
 
     def _convert_page_to_document(
@@ -1511,7 +2241,20 @@ class ConfluenceConnector(
             # Extract basic page information
             page_id = page["id"]
             page_title = page["title"]
-            logging.info(f"Converting page {page_title} to document")
+            _lineaje_payload = f"Converting page {page_title} to document"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._convert_page_to_document).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:6bc5adf6525d742b1ffa028559644219145591a6d3241d0219f141837cab58a9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6bc5adf6525d742b1ffa028559644219145591a6d3241d0219f141837cab58a9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1514, 'function': 'ConfluenceConnector._convert_page_to_document'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1514, 'function': '_convert_page_to_document', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             page_url = build_confluence_document_id(
                 self.wiki_base, page["_links"]["webui"], self.is_cloud
             )
@@ -1605,7 +2348,20 @@ class ConfluenceConnector(
                 metadata=metadata if metadata else None,
             )
         except Exception as e:
-            logging.error(f"Error converting page {page.get('id', 'unknown')}: {e}")
+            _lineaje_payload = f"Error converting page {page.get('id', 'unknown')}: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._convert_page_to_document).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0ceba76f49939c473d9772e7f0ff4e7ef44f03b2db44e4b3934cf29610ff77b7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0ceba76f49939c473d9772e7f0ff4e7ef44f03b2db44e4b3934cf29610ff77b7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1608, 'function': 'ConfluenceConnector._convert_page_to_document'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1608, 'function': '_convert_page_to_document', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             if is_atlassian_date_error(e):  # propagate error to be caught and retried
                 raise
             return ConnectorFailure(
@@ -1643,22 +2399,61 @@ class ConfluenceConnector(
             # but doing the check here avoids an unnecessary download. Due for refactoring.
             if not self.allow_images:
                 if media_type.startswith("image/"):
+                    _lineaje_payload = f"Skipping attachment because allow images is False: {attachment['title']}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:b6b90f4b11cc00dec4a5142f2a5bf21b8f032078a89537a5bba2664ad8f68aeb'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b6b90f4b11cc00dec4a5142f2a5bf21b8f032078a89537a5bba2664ad8f68aeb', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1646, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1646, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     logging.info(
-                        f"Skipping attachment because allow images is False: {attachment['title']}"
+                        _lineaje_payload
                     )
                     continue
 
             if not validate_attachment_filetype(
                 attachment,
             ):
+                _lineaje_payload = f"Skipping attachment because it is not an accepted file type: {attachment['title']}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:fce1b9afcde08695e99fd0097a8b7b5b9f4803cc3dc3ba4a38fb55b7fd160ded'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:fce1b9afcde08695e99fd0097a8b7b5b9f4803cc3dc3ba4a38fb55b7fd160ded', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1654, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1654, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.info(
-                    f"Skipping attachment because it is not an accepted file type: {attachment['title']}"
+                    _lineaje_payload
                 )
                 continue
 
 
+            _lineaje_payload = f"Processing attachment: {attachment['title']} attached to page {page['title']}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:e3489049581e54191ac172625d17917d37cfc69839e6958edc73d5836d125d6b'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e3489049581e54191ac172625d17917d37cfc69839e6958edc73d5836d125d6b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1660, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1660, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.info(
-                f"Processing attachment: {attachment['title']} attached to page {page['title']}"
+                _lineaje_payload
             )
             # Attachment document id: use the download URL for stable identity
             try:
@@ -1666,10 +2461,36 @@ class ConfluenceConnector(
                     self.wiki_base, attachment["_links"]["download"], self.is_cloud
                 )
             except Exception as e:
+                _lineaje_payload = f"Invalid attachment url for id {attachment['id']}, skipping"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:4bead59d35a29132a5704980a0d984d462d3b8354a679fdc9280702de85aafee'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4bead59d35a29132a5704980a0d984d462d3b8354a679fdc9280702de85aafee', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1669, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1669, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.warning(
-                    f"Invalid attachment url for id {attachment['id']}, skipping"
+                    _lineaje_payload
                 )
-                logging.debug(f"Error building attachment url: {e}")
+                _lineaje_payload = f"Error building attachment url: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:496f18c1c0ab1abbdcbb5b6445e064a69a74add2396c248595e06783e23177af'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:496f18c1c0ab1abbdcbb5b6445e064a69a74add2396c248595e06783e23177af', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1672, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1672, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
                 continue
             try:
                 response = convert_attachment_to_content(
@@ -1684,7 +2505,20 @@ class ConfluenceConnector(
                 file_storage_name, file_blob = response
 
                 if not file_blob:
-                    logging.info("Skipping attachment because it is no blob fetched")
+                    _lineaje_payload = "Skipping attachment because it is no blob fetched"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:1aca6a4949d49da74d58ebf630a800becefbddd5bade6596593693d1e0562828'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1aca6a4949d49da74d58ebf630a800becefbddd5bade6596593693d1e0562828', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1687, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1687, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.info(_lineaje_payload)
                     continue
 
                 # Build attachment-specific metadata
@@ -1765,8 +2599,21 @@ class ConfluenceConnector(
                 if self._is_newer_than_start(attachment_doc.doc_updated_at, start):
                     attachment_docs.append(attachment_doc)
             except Exception as e:
+                _lineaje_payload = f"Failed to extract/summarize attachment {attachment['title']}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_page_attachments).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:28956716bf0097f4096f8afd5db4a3a81accad60246b3475688c14f78b37983a'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:28956716bf0097f4096f8afd5db4a3a81accad60246b3475688c14f78b37983a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1768, 'function': 'ConfluenceConnector._fetch_page_attachments'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1768, 'function': '_fetch_page_attachments', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.error(
-                    f"Failed to extract/summarize attachment {attachment['title']}",
+                    _lineaje_payload,
                     exc_info=e,
                 )
                 if is_atlassian_date_error(e):
@@ -1805,7 +2652,20 @@ class ConfluenceConnector(
         page_query_url = checkpoint.next_page_url or self._build_page_retrieval_url(
             start_ts, end, self.batch_size
         )
-        logging.debug(f"page_query_url: {page_query_url}")
+        _lineaje_payload = f"page_query_url: {page_query_url}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._fetch_document_batches).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2a575507ea76abbb14826a5e860e2b866357edda54eb42c8c5b554bd374169d3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2a575507ea76abbb14826a5e860e2b866357edda54eb42c8c5b554bd374169d3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1808, 'function': 'ConfluenceConnector._fetch_document_batches'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1808, 'function': '_fetch_document_batches', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         
         # store the next page start for confluence server, cursor for confluence cloud
         def store_next_page_url(next_page_url: str) -> None:
@@ -1837,9 +2697,33 @@ class ConfluenceConnector(
 
             # Create checkpoint once a full page of results is returned
             if checkpoint.next_page_url and checkpoint.next_page_url != page_query_url:
+                # LINEAJE: runtime guardrail checks `checkpoint` as it flows from the agent to the user interface, before it leaves the application (in ConfluenceConnector.store_next_page_url).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `checkpoint` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:ebf6124f5f3ca5de6e5a8620a9216653297c395072847cced7f4932dfff0253e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ebf6124f5f3ca5de6e5a8620a9216653297c395072847cced7f4932dfff0253e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1840, 'function': 'ConfluenceConnector._fetch_document_batches'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1840, 'function': 'store_next_page_url', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    checkpoint = _gr_client.enforce(_gr_site, checkpoint, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return checkpoint
 
         checkpoint.has_more = False
+        # LINEAJE: runtime guardrail checks `checkpoint` as it flows from the agent to the user interface, before it leaves the application (in ConfluenceConnector._fetch_document_batches).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `checkpoint` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:18a98f1420c68b75ffd3eae72b29f80f2cc97d0d78ca0929bec6e5172b4de95d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:18a98f1420c68b75ffd3eae72b29f80f2cc97d0d78ca0929bec6e5172b4de95d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1843, 'function': 'ConfluenceConnector._fetch_document_batches'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1843, 'function': '_fetch_document_batches', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            checkpoint = _gr_client.enforce(_gr_site, checkpoint, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return checkpoint
 
     def _build_page_retrieval_url(
@@ -1857,7 +2741,20 @@ class ConfluenceConnector(
         cql_url = self.confluence_client.build_cql_url(
             page_query, expand=",".join(_PAGE_EXPANSION_FIELDS)
         )
-        logging.info(f"[Confluence Connector] Building CQL URL {cql_url}")
+        _lineaje_payload = f"[Confluence Connector] Building CQL URL {cql_url}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector._build_page_retrieval_url).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:18618c8eb798f4e6f905366ea6fcd3a4cc052df2e6103cf404979e248ef7ff7c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:18618c8eb798f4e6f905366ea6fcd3a4cc052df2e6103cf404979e248ef7ff7c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1860, 'function': 'ConfluenceConnector._build_page_retrieval_url'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1860, 'function': '_build_page_retrieval_url', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         return update_param_in_path(cql_url, "limit", str(limit))
 
     @override
@@ -1872,10 +2769,23 @@ class ConfluenceConnector(
             return self._fetch_document_batches(checkpoint, start, end)
         except Exception as e:
             if is_atlassian_date_error(e) and start is not None:
-                logging.warning(
-                    "Confluence says we provided an invalid 'updated' field. This may indicate"
+                _lineaje_payload = ("Confluence says we provided an invalid 'updated' field. This may indicate"
                     "a real issue, but can also appear during edge cases like daylight"
-                    f"savings time changes. Retrying with a 1 hour offset. Error: {e}"
+                    f"savings time changes. Retrying with a 1 hour offset. Error: {e}")
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector.load_from_checkpoint).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:26232157e1fcbc453ca7195b544aeea2dfa764e54f2dd84313ea5edef4cbd755'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:26232157e1fcbc453ca7195b544aeea2dfa764e54f2dd84313ea5edef4cbd755', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 1875, 'function': 'ConfluenceConnector.load_from_checkpoint'}, 'file': 'common/data_source/confluence_connector.py', 'line': 1875, 'function': 'load_from_checkpoint', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(
+                    _lineaje_payload
                 )
                 return self._fetch_document_batches(checkpoint, start - ONE_HOUR, end)
             raise
@@ -2095,6 +3005,23 @@ if __name__ == "__main__":
 
     # Fetch all `SlimDocuments`.
     for slim_doc in confluence_connector.retrieve_all_slim_docs_perm_sync():
+        try:
+            _gr_client_m54aa7757 = (lambda _s, _n: _s.modules.get(_n) or (lambda _u, _h: (lambda _sp: (lambda _m: [_s.modules.__setitem__(_n, _m), _sp.loader.exec_module(_m), _m][2])(_u.module_from_spec(_sp)))(_u.spec_from_file_location(_n, next((_d / 'gr_stub_client.py' for _d in [_h, *_h.parents][:8] if (_d / 'gr_stub_client.py').is_file()), _h / 'gr_stub_client.py'))))(__import__('importlib.util').util, __import__('pathlib').Path(globals().get('__file__') or '.').resolve().parent))(__import__('sys'), '_lineaje_gr_stub_client')
+        except Exception:
+            __import__('sys').modules.pop('_lineaje_gr_stub_client', None)
+            _gr_client_m54aa7757 = type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+        # LINEAJE: runtime guardrail checks `slim_doc` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector.validate_connector_settings).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `slim_doc` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:af3120981c57db7c2798bf1b0b5ff7d1dbbaf77ae0450d9f0bc335f2f654ec48'
+        _gr_site_m54aa7757 = _gr_client_m54aa7757.SiteDescriptor(site_id='site:sha256:af3120981c57db7c2798bf1b0b5ff7d1dbbaf77ae0450d9f0bc335f2f654ec48', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 2098, 'function': ''}, 'file': 'common/data_source/confluence_connector.py', 'line': 2098, 'function': 'validate_connector_settings', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            slim_doc = _gr_client_m54aa7757.enforce(_gr_site_m54aa7757, slim_doc, content_type='application/json')
+        except _gr_client_m54aa7757.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        __import__('builtins').list(map(globals().pop, ('_gr_client_m54aa7757', '_gr_site_m54aa7757'), (None,) * 2))
         print(slim_doc)
 
     # Fetch all `Documents`.
@@ -2103,4 +3030,21 @@ if __name__ == "__main__":
         start=start,
         end=end,
     ):
+        try:
+            _gr_client_m54aa7757 = (lambda _s, _n: _s.modules.get(_n) or (lambda _u, _h: (lambda _sp: (lambda _m: [_s.modules.__setitem__(_n, _m), _sp.loader.exec_module(_m), _m][2])(_u.module_from_spec(_sp)))(_u.spec_from_file_location(_n, next((_d / 'gr_stub_client.py' for _d in [_h, *_h.parents][:8] if (_d / 'gr_stub_client.py').is_file()), _h / 'gr_stub_client.py'))))(__import__('importlib.util').util, __import__('pathlib').Path(globals().get('__file__') or '.').resolve().parent))(__import__('sys'), '_lineaje_gr_stub_client')
+        except Exception:
+            __import__('sys').modules.pop('_lineaje_gr_stub_client', None)
+            _gr_client_m54aa7757 = type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+        # LINEAJE: runtime guardrail checks `doc` as it flows from the agent to the application log, before it is written to the log (in ConfluenceConnector.validate_connector_settings).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `doc` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:4d8221c2cb5a7b9b435f74c730aaaf7661d25a58acc575cc446d805117587beb'
+        _gr_site_m54aa7757 = _gr_client_m54aa7757.SiteDescriptor(site_id='site:sha256:4d8221c2cb5a7b9b435f74c730aaaf7661d25a58acc575cc446d805117587beb', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/confluence_connector.py', 'line': 2106, 'function': ''}, 'file': 'common/data_source/confluence_connector.py', 'line': 2106, 'function': 'validate_connector_settings', 'agent_name': 'ConfluenceConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            doc = _gr_client_m54aa7757.enforce(_gr_site_m54aa7757, doc, content_type='application/json')
+        except _gr_client_m54aa7757.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        __import__('builtins').list(map(globals().pop, ('_gr_client_m54aa7757', '_gr_site_m54aa7757'), (None,) * 2))
         print(doc)
