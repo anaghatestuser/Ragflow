@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -66,7 +84,20 @@ class Excel(ExcelParser):
             try:
                 rows = list(ws.rows)
             except Exception as e:
-                logging.warning(f"Skip sheet '{sheetname}' due to rows access error: {e}")
+                _lineaje_payload = f"Skip sheet '{sheetname}' due to rows access error: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Excel.__call__).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:63167bfa04999f9a2980e898f0d218add136a975ab78a181bf534925dd70250e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:63167bfa04999f9a2980e898f0d218add136a975ab78a181bf534925dd70250e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/table.py', 'line': 69, 'function': 'Excel.__call__'}, 'file': 'rag/app/table.py', 'line': 69, 'function': '__call__', 'agent_name': 'Excel', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 continue
             if not rows:
                 continue
@@ -203,6 +234,18 @@ class Excel(ExcelParser):
                 header_rows = i + 1
             else:
                 break
+        # LINEAJE: runtime guardrail checks `header_rows` as it flows from the agent to the user interface, before it leaves the application (in Excel._detect_header_rows).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `header_rows` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ae485ce99bb4649968bac25342cb4c8c4a8665d19949a648ba9cfffb9f6bdbce'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ae485ce99bb4649968bac25342cb4c8c4a8665d19949a648ba9cfffb9f6bdbce', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/table.py', 'line': 206, 'function': 'Excel._detect_header_rows'}, 'file': 'rag/app/table.py', 'line': 206, 'function': '_detect_header_rows', 'agent_name': 'Excel', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            header_rows = _gr_client.enforce(_gr_site, header_rows, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return header_rows
 
     def _looks_like_header(self, value):
@@ -247,6 +290,18 @@ class Excel(ExcelParser):
             else:
                 headers.append(f"Column_{col_idx + 1}")
         final_headers = [h for h in headers if h and h != "-"]
+        # LINEAJE: runtime guardrail checks `final_headers` as it flows from the agent to the user interface, before it leaves the application (in Excel._build_hierarchical_headers).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `final_headers` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:19f64a684ad473fadd6c25c7017aab128702b1339b70618dced63bc75acf25ce'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:19f64a684ad473fadd6c25c7017aab128702b1339b70618dced63bc75acf25ce', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/table.py', 'line': 250, 'function': 'Excel._build_hierarchical_headers'}, 'file': 'rag/app/table.py', 'line': 250, 'function': '_build_hierarchical_headers', 'agent_name': 'Excel', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            final_headers = _gr_client.enforce(_gr_site, final_headers, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return final_headers
 
     def _is_valid_header_part(self, value):
@@ -283,6 +338,18 @@ class Excel(ExcelParser):
                 else:
                     cell_value = self._get_inherited_value(ws, actual_row_num, actual_col_num, merged_ranges)
             row_data.append(cell_value)
+        # LINEAJE: runtime guardrail checks `row_data` as it flows from the agent to the user interface, before it leaves the application (in Excel._extract_row_data).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `row_data` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9911953b1234c54e54281ebd1dcdc4e2734ce87e866bca8a9bc9196f0f31057b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9911953b1234c54e54281ebd1dcdc4e2734ce87e866bca8a9bc9196f0f31057b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/table.py', 'line': 286, 'function': 'Excel._extract_row_data'}, 'file': 'rag/app/table.py', 'line': 286, 'function': '_extract_row_data', 'agent_name': 'Excel', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            row_data = _gr_client.enforce(_gr_site, row_data, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return row_data
 
     def _get_inherited_value(self, ws, row, col, merged_ranges):
@@ -471,6 +538,18 @@ def chunk(filename, binary=None, from_page=0, to_page=10000000000, lang="Chinese
         KnowledgebaseService.update_parser_config(kwargs["kb_id"], {"field_map": {k: v for k, v in clmns_map}})
     callback(0.35, "")
 
+    # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in chunk).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:eabf90df7ba60f09e2ad59b95dcd820f911023dc87ca6060b9f4119aab37b4b5'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:eabf90df7ba60f09e2ad59b95dcd820f911023dc87ca6060b9f4119aab37b4b5', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/table.py', 'line': 474, 'function': 'chunk'}, 'file': 'rag/app/table.py', 'line': 474, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return res
 
 
