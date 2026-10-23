@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -123,7 +141,20 @@ stop_event = threading.Event()
 
 
 def signal_handler(sig, frame):
-    logging.info("Received interrupt signal, shutting down...")
+    _lineaje_payload = "Received interrupt signal, shutting down..."
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in signal_handler).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:bc9226b8a2b108749f964e094ba9866a597c589b58896413749982ba9f38f6f7'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bc9226b8a2b108749f964e094ba9866a597c589b58896413749982ba9f38f6f7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 126, 'function': 'signal_handler'}, 'file': 'rag/svr/task_executor.py', 'line': 126, 'function': 'signal_handler', 'agent_name': 'signal_handler', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     stop_event.set()
     time.sleep(1)
     sys.exit(0)
@@ -154,11 +185,50 @@ def set_progress(task_id, from_page=0, to_page=-1, prog=None, msg="Processing...
         close_connection()
         if cancel:
             raise TaskCanceledException(msg)
-        logging.info(f"set_progress({task_id}), progress: {prog}, progress_msg: {msg}")
+        _lineaje_payload = f"set_progress({task_id}), progress: {prog}, progress_msg: {msg}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in set_progress).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:12ecdf381cfd2ee4a6d78cfb95f8ea95added417d5f896b2defab6c1f48ab8c3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:12ecdf381cfd2ee4a6d78cfb95f8ea95added417d5f896b2defab6c1f48ab8c3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 157, 'function': 'set_progress'}, 'file': 'rag/svr/task_executor.py', 'line': 157, 'function': 'set_progress', 'agent_name': 'set_progress', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     except DoesNotExist:
-        logging.warning(f"set_progress({task_id}) got exception DoesNotExist")
+        _lineaje_payload = f"set_progress({task_id}) got exception DoesNotExist"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in set_progress).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b2bb11a9d8da06ad724579da27bea9547ba73fbb50faa6314163404f3571308b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b2bb11a9d8da06ad724579da27bea9547ba73fbb50faa6314163404f3571308b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 159, 'function': 'set_progress'}, 'file': 'rag/svr/task_executor.py', 'line': 159, 'function': 'set_progress', 'agent_name': 'set_progress', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.warning(_lineaje_payload)
     except Exception:
-        logging.exception(f"set_progress({task_id}), progress: {prog}, progress_msg: {msg}, got exception")
+        _lineaje_payload = f"set_progress({task_id}), progress: {prog}, progress_msg: {msg}, got exception"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in set_progress).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8b2c003d0507941922962796a3aff31dd5436945d3f9f8615161f3bbbe8dddf1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8b2c003d0507941922962796a3aff31dd5436945d3f9f8615161f3bbbe8dddf1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 161, 'function': 'set_progress'}, 'file': 'rag/svr/task_executor.py', 'line': 161, 'function': 'set_progress', 'agent_name': 'set_progress', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
 
 
 async def collect():
@@ -177,14 +247,40 @@ async def collect():
                 if redis_msg:
                     break
     except Exception:
-        logging.exception("collect got exception")
+        _lineaje_payload = "collect got exception"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in collect).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:74beca5efb4078848653d1096c6c7cfe899dbefe385baf4cbfeef222e8691429'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:74beca5efb4078848653d1096c6c7cfe899dbefe385baf4cbfeef222e8691429', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 180, 'function': 'collect'}, 'file': 'rag/svr/task_executor.py', 'line': 180, 'function': 'collect', 'agent_name': 'collect', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
         return None, None
 
     if not redis_msg:
         return None, None
     msg = redis_msg.get_message()
     if not msg:
-        logging.error(f"collect got empty message of {redis_msg.get_msg_id()}")
+        _lineaje_payload = f"collect got empty message of {redis_msg.get_msg_id()}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in collect).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:fc1aaf923e609bd1f4d6c163260dfcff1ca940b14b40c84b7ab78d2db16d48f1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:fc1aaf923e609bd1f4d6c163260dfcff1ca940b14b40c84b7ab78d2db16d48f1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 187, 'function': 'collect'}, 'file': 'rag/svr/task_executor.py', 'line': 187, 'function': 'collect', 'agent_name': 'collect', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.error(_lineaje_payload)
         redis_msg.ack()
         return None, None
 
@@ -204,7 +300,20 @@ async def collect():
     if not task or canceled:
         state = "is unknown" if not task else "has been cancelled"
         FAILED_TASKS += 1
-        logging.warning(f"collect task {msg['id']} {state}")
+        _lineaje_payload = f"collect task {msg['id']} {state}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in collect).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:032195c3e3376c6ed00e9523b20a098df56c1e5579041507fadf49a1b68efe1a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:032195c3e3376c6ed00e9523b20a098df56c1e5579041507fadf49a1b68efe1a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 207, 'function': 'collect'}, 'file': 'rag/svr/task_executor.py', 'line': 207, 'function': 'collect', 'agent_name': 'collect', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.warning(_lineaje_payload)
         redis_msg.ack()
         return None, None
 
@@ -233,18 +342,57 @@ async def build_chunks(task, progress_callback):
         st = timer()
         bucket, name = File2DocumentService.get_storage_address(doc_id=task["doc_id"])
         binary = await get_storage_binary(bucket, name)
-        logging.info("From minio({}) {}/{}".format(timer() - st, task["location"], task["name"]))
+        _lineaje_payload = "From minio({}) {}/{}".format(timer() - st, task["location"], task["name"])
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:110bd24b3bedd86f9aa9012d6b42361f1ebf4821e4828882d37c9a03e8ac3638'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:110bd24b3bedd86f9aa9012d6b42361f1ebf4821e4828882d37c9a03e8ac3638', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 236, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 236, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     except TimeoutError:
         progress_callback(-1, "Internal server error: Fetch file from minio timeout. Could you try it again.")
+        _lineaje_payload = "Minio {}/{} got timeout: Fetch file from minio timeout.".format(task["location"], task["name"])
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:58e0222e44faa6cc8e21de9cdedd725356dc7d51ee05eb96982a90be4c49efd2'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:58e0222e44faa6cc8e21de9cdedd725356dc7d51ee05eb96982a90be4c49efd2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 239, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 239, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.exception(
-            "Minio {}/{} got timeout: Fetch file from minio timeout.".format(task["location"], task["name"]))
+            _lineaje_payload)
         raise
     except Exception as e:
         if re.search("(No such file|not found)", str(e)):
             progress_callback(-1, "Can not find file <%s> from minio. Could you try it again?" % task["name"])
         else:
             progress_callback(-1, "Get file from minio: %s" % str(e).replace("'", ""))
-        logging.exception("Chunking {}/{} got exception".format(task["location"], task["name"]))
+        _lineaje_payload = "Chunking {}/{} got exception".format(task["location"], task["name"])
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b55170ce5256795b253c065278176c64a9ce4261b6c98dffd859ffe94b8ab94a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b55170ce5256795b253c065278176c64a9ce4261b6c98dffd859ffe94b8ab94a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 247, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 247, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
         raise
 
     try:
@@ -261,12 +409,38 @@ async def build_chunks(task, progress_callback):
                 parser_config=task["parser_config"],
                 tenant_id=task["tenant_id"],
             )
-        logging.info("Chunking({}) {}/{} done".format(timer() - st, task["location"], task["name"]))
+        _lineaje_payload = "Chunking({}) {}/{} done".format(timer() - st, task["location"], task["name"])
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:89fc623d3d9ea7d4fb321b8a3b3b0a36639aa9d8a283812a8eb5eed7e24cf16c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:89fc623d3d9ea7d4fb321b8a3b3b0a36639aa9d8a283812a8eb5eed7e24cf16c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 264, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 264, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     except TaskCanceledException:
         raise
     except Exception as e:
         progress_callback(-1, "Internal server error while chunking: %s" % str(e).replace("'", ""))
-        logging.exception("Chunking {}/{} got exception".format(task["location"], task["name"]))
+        _lineaje_payload = "Chunking {}/{} got exception".format(task["location"], task["name"])
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:aac342dc251f3554a0dc45a2d818ba813a0907e30956a1e3178652054fc408d4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:aac342dc251f3554a0dc45a2d818ba813a0907e30956a1e3178652054fc408d4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 269, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 269, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
         raise
 
     docs = []
@@ -294,8 +468,21 @@ async def build_chunks(task, progress_callback):
             await image2id(d, partial(settings.STORAGE_IMPL.put, tenant_id=task["tenant_id"]), d["id"], task["kb_id"])
             docs.append(d)
         except Exception:
+            _lineaje_payload = "Saving image of chunk {}/{}/{} got exception".format(task["location"], task["name"], d["id"])
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in upload_to_minio).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3cef9d37c42fb271dfe11cae082d45a8c0abba30998cac19b15619939164d31a'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3cef9d37c42fb271dfe11cae082d45a8c0abba30998cac19b15619939164d31a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 297, 'function': 'build_chunks.upload_to_minio'}, 'file': 'rag/svr/task_executor.py', 'line': 297, 'function': 'upload_to_minio', 'agent_name': 'upload_to_minio', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(
-                "Saving image of chunk {}/{}/{} got exception".format(task["location"], task["name"], d["id"]))
+                _lineaje_payload)
             raise
 
     tasks = []
@@ -304,14 +491,40 @@ async def build_chunks(task, progress_callback):
     try:
         await asyncio.gather(*tasks, return_exceptions=False)
     except Exception as e:
-        logging.error(f"MINIO PUT({task['name']}) got exception: {e}")
+        _lineaje_payload = f"MINIO PUT({task['name']}) got exception: {e}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in upload_to_minio).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:86e595b676ac12bb4a97eefe9799b620b371d8438c072395c2415874f7f6ba47'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:86e595b676ac12bb4a97eefe9799b620b371d8438c072395c2415874f7f6ba47', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 307, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 307, 'function': 'upload_to_minio', 'agent_name': 'upload_to_minio', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.error(_lineaje_payload)
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         raise
 
     el = timer() - st
-    logging.info("MINIO PUT({}) cost {:.3f} s".format(task["name"], el))
+    _lineaje_payload = "MINIO PUT({}) cost {:.3f} s".format(task["name"], el)
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_chunks).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:e6b6c89b93a0ecd4a9f4dc801265bb807add6a93d4bde1bf605e17765e7d2831'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e6b6c89b93a0ecd4a9f4dc801265bb807add6a93d4bde1bf605e17765e7d2831', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 314, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 314, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
 
     if task["parser_config"].get("auto_keywords", 0):
         st = timer()
@@ -334,7 +547,20 @@ async def build_chunks(task, progress_callback):
         try:
             await asyncio.gather(*tasks, return_exceptions=False)
         except Exception as e:
-            logging.error("Error in doc_keyword_extraction: {}".format(e))
+            _lineaje_payload = "Error in doc_keyword_extraction: {}".format(e)
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in doc_keyword_extraction).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0a34e7c638a8a4b658adaa83a0fe36b81213ca192eb23d838b88284ec8137fde'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0a34e7c638a8a4b658adaa83a0fe36b81213ca192eb23d838b88284ec8137fde', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 337, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 337, 'function': 'doc_keyword_extraction', 'agent_name': 'doc_keyword_extraction', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -361,7 +587,20 @@ async def build_chunks(task, progress_callback):
         try:
             await asyncio.gather(*tasks, return_exceptions=False)
         except Exception as e:
-            logging.error("Error in doc_question_proposal", exc_info=e)
+            _lineaje_payload = "Error in doc_question_proposal"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in doc_question_proposal).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:18a807b1a1b0769318d05e54a94fe7d6b7aa1502becb5807f6b34ffbc5b74024'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:18a807b1a1b0769318d05e54a94fe7d6b7aa1502becb5807f6b34ffbc5b74024', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 364, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 364, 'function': 'doc_question_proposal', 'agent_name': 'doc_question_proposal', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload, exc_info=e)
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -389,7 +628,20 @@ async def build_chunks(task, progress_callback):
         try:
             await asyncio.gather(*tasks, return_exceptions=False)
         except Exception as e:
-            logging.error("Error in doc_question_proposal", exc_info=e)
+            _lineaje_payload = "Error in doc_question_proposal"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in gen_metadata_task).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:e5635afd522a3f61c3ac22119ca02b20c5d3640b5ba98f0f682c99a6bd6cdc89'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e5635afd522a3f61c3ac22119ca02b20c5d3640b5ba98f0f682c99a6bd6cdc89', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 392, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 392, 'function': 'gen_metadata_task', 'agent_name': 'gen_metadata_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload, exc_info=e)
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -412,6 +664,16 @@ async def build_chunks(task, progress_callback):
         kb_ids = task["kb_parser_config"]["tag_kb_ids"]
         tenant_id = task["tenant_id"]
         topn_tags = task["kb_parser_config"].get("topn_tags", 3)
+        # LINEAJE: runtime guardrail checks `topn_tags` as it flows from an external API to the agent, after the tool returns (in upload_to_minio).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `topn_tags` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6f169b2410c81eada50e8d3de0adc19e3630e37bac5bdbc3dcd7fd4e7f3a3a2c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6f169b2410c81eada50e8d3de0adc19e3630e37bac5bdbc3dcd7fd4e7f3a3a2c', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 414, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 414, 'function': 'upload_to_minio', 'agent_name': 'upload_to_minio', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            topn_tags = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, topn_tags, content_type='application/json', variable_name='topn_tags', source_file=__file__, before_line=414))
+        except _gr_client.GuardrailUnavailableError:
+            pass
         S = 1000
         st = timer()
         examples = []
@@ -450,6 +712,16 @@ async def build_chunks(task, progress_callback):
                         topn_tags,
                     )
                 if cached:
+                    # LINEAJE: runtime guardrail checks `cached` as it flows from the agent to an external endpoint, before it leaves the application (in doc_content_tagging).
+                    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `cached` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:2f3b5d5e18da62855de04e5a3e574f681d79112daca22d290c97fb0d46f7592b'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2f3b5d5e18da62855de04e5a3e574f681d79112daca22d290c97fb0d46f7592b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 453, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 453, 'function': 'doc_content_tagging', 'agent_name': 'doc_content_tagging', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                    try:
+                        cached = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, cached, content_type='application/json', variable_name='cached', source_file=__file__, before_line=453))
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     cached = json.dumps(cached)
             if cached:
                 set_llm_cache(chat_mdl.llm_name, d["content_with_weight"], cached, all_tags, {"topn": topn_tags})
@@ -460,13 +732,38 @@ async def build_chunks(task, progress_callback):
         try:
             await asyncio.gather(*tasks, return_exceptions=False)
         except Exception as e:
-            logging.error("Error tagging docs: {}".format(e))
+            _lineaje_payload = "Error tagging docs: {}".format(e)
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in doc_content_tagging).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:beca7a7f28675ed079b56e4aaf5e3cae780a19e780dcf5b754d12d0104102359'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:beca7a7f28675ed079b56e4aaf5e3cae780a19e780dcf5b754d12d0104102359', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 463, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 463, 'function': 'doc_content_tagging', 'agent_name': 'doc_content_tagging', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
         progress_callback(msg="Tagging {} chunks completed in {:.2f}s".format(len(docs), timer() - st))
 
+    # LINEAJE: runtime guardrail checks `docs` as it flows from the agent to the user interface, before it leaves the application (in build_chunks).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `docs` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:069fd18ee6ab785b00ea6f509d4073eda7f22e5c6fd8b5c590bb82b3c62f76d3'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:069fd18ee6ab785b00ea6f509d4073eda7f22e5c6fd8b5c590bb82b3c62f76d3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 470, 'function': 'build_chunks'}, 'file': 'rag/svr/task_executor.py', 'line': 470, 'function': 'build_chunks', 'agent_name': 'build_chunks', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        docs = _gr_client.enforce(_gr_site, docs, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return docs
 
 
@@ -478,7 +775,30 @@ def build_TOC(task, docs, progress_callback):
         d.get("top_int", 0)[0] if isinstance(d.get("top_int", 0), list) else d.get("top_int", 0)
     ))
     toc: list[dict] = asyncio.run(run_toc_from_text([d["content_with_weight"] for d in docs], chat_mdl, progress_callback))
-    logging.info("------------ T O C -------------\n"+json.dumps(toc, ensure_ascii=False, indent='  '))
+    # LINEAJE: runtime guardrail checks `toc` as it flows from the agent to an external endpoint, before it leaves the application (in build_TOC).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `toc` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:a2673cb1e075e683147213afbd8560f8567513a56bf1c99fdb5b02e1a15bed17'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a2673cb1e075e683147213afbd8560f8567513a56bf1c99fdb5b02e1a15bed17', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 481, 'function': 'build_TOC'}, 'file': 'rag/svr/task_executor.py', 'line': 481, 'function': 'build_TOC', 'agent_name': 'build_TOC', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        toc = _gr_client.enforce(_gr_site, toc, content_type='application/json', variable_name='toc', source_file=__file__, before_line=481)
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    _lineaje_payload = "------------ T O C -------------\n"+json.dumps(toc, ensure_ascii=False, indent='  ')
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in build_TOC).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:3fe7d711cbf50b8f9ee7bf6bdd83943d418304ccfa5a6cc187f9dd99920e897c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3fe7d711cbf50b8f9ee7bf6bdd83943d418304ccfa5a6cc187f9dd99920e897c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 481, 'function': 'build_TOC'}, 'file': 'rag/svr/task_executor.py', 'line': 481, 'function': 'build_TOC', 'agent_name': 'build_TOC', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     ii = 0
     while ii < len(toc):
         try:
@@ -490,16 +810,50 @@ def build_TOC(task, docs, progress_callback):
             for jj in range(idx+1, int(toc[ii+1]["chunk_id"])+1):
                 toc[ii]["ids"].append(docs[jj]["id"])
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in build_TOC).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:1a57f8b5280ee56d8364133f2d4f451724ea92c9401c5d1b17ba8aabc8d2c5a5'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1a57f8b5280ee56d8364133f2d4f451724ea92c9401c5d1b17ba8aabc8d2c5a5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 493, 'function': 'build_TOC'}, 'file': 'rag/svr/task_executor.py', 'line': 493, 'function': 'build_TOC', 'agent_name': 'build_TOC', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
         ii += 1
 
     if toc:
         d = copy.deepcopy(docs[-1])
+        # LINEAJE: runtime guardrail checks `toc` as it flows from the agent to an external endpoint, before it leaves the application (in build_TOC).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `toc` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e8c6cb4c378758ada983402c6156f537a6ab8d87a65ac6cd1c82ae075937841f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e8c6cb4c378758ada983402c6156f537a6ab8d87a65ac6cd1c82ae075937841f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 498, 'function': 'build_TOC'}, 'file': 'rag/svr/task_executor.py', 'line': 498, 'function': 'build_TOC', 'agent_name': 'build_TOC', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            toc = _gr_client.enforce(_gr_site, toc, content_type='application/json', variable_name='toc', source_file=__file__, before_line=498)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         d["content_with_weight"] = json.dumps(toc, ensure_ascii=False)
         d["toc_kwd"] = "toc"
         d["available_int"] = 0
         d["page_num_int"] = [100000000]
         d["id"] = xxhash.xxh64((d["content_with_weight"] + str(d["doc_id"])).encode("utf-8", "surrogatepass")).hexdigest()
+        # LINEAJE: runtime guardrail checks `d` as it flows from the agent to the user interface, before it leaves the application (in build_TOC).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `d` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b25bff0c2bc1079d4f9f89a9897fb440aedec1746ebf916146b367c08bd6b561'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b25bff0c2bc1079d4f9f89a9897fb440aedec1746ebf916146b367c08bd6b561', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 503, 'function': 'build_TOC'}, 'file': 'rag/svr/task_executor.py', 'line': 503, 'function': 'build_TOC', 'agent_name': 'build_TOC', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            d = _gr_client.enforce(_gr_site, d, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return d
     return None
 
@@ -613,7 +967,18 @@ async def run_dataflow(task: dict):
             @timeout(60)
             def batch_encode(txts):
                 nonlocal embedding_model
-                return embedding_model.encode([truncate(c, embedding_model.max_length - 10) for c in txts])
+                _lineaje_payload = [truncate(c, embedding_model.max_length - 10) for c in txts]
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in batch_encode).
+                #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+                #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:d764fdc6a732f6c9df95da53d318fc5c027ce0d0c035f218e98980369e90566f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d764fdc6a732f6c9df95da53d318fc5c027ce0d0c035f218e98980369e90566f', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 616, 'function': 'run_dataflow'}, 'file': 'rag/svr/task_executor.py', 'line': 616, 'function': 'batch_encode', 'agent_name': 'batch_encode', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=616)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                return embedding_model.encode(_lineaje_payload)
             vects = np.array([])
             texts = [o.get("questions", o.get("summary", o["text"])) for o in chunks]
             delta = 0.20/(len(texts)//settings.EMBEDDING_BATCH_SIZE+1)
@@ -693,7 +1058,20 @@ async def run_dataflow(task: dict):
     task_time_cost = timer() - task_start_ts
     set_progress(task_id, prog=1., msg="Indexing done ({:.2f}s). Task done ({:.2f}s)".format(time_cost, task_time_cost))
     DocumentService.increment_chunk_num(doc_id, task_dataset_id, embedding_token_consumption, len(chunks), task_time_cost)
-    logging.info("[Done], chunks({}), token({}), elapsed:{:.2f}".format(len(chunks),  embedding_token_consumption, task_time_cost))
+    _lineaje_payload = "[Done], chunks({}), token({}), elapsed:{:.2f}".format(len(chunks),  embedding_token_consumption, task_time_cost)
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in run_dataflow).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:41b5747963346689487bfd00fef269804a28fc578bb6c61e51f41acf4bf6a927'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:41b5747963346689487bfd00fef269804a28fc578bb6c61e51f41acf4bf6a927', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 696, 'function': 'run_dataflow'}, 'file': 'rag/svr/task_executor.py', 'line': 696, 'function': 'run_dataflow', 'agent_name': 'run_dataflow', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     PipelineOperationLogService.create(document_id=doc_id, pipeline_id=dataflow_id, task_type=PipelineTaskType.PARSE, dsl=str(pipeline))
 
 
@@ -770,7 +1148,20 @@ async def delete_image(kb_id, chunk_id):
         async with minio_limiter:
             settings.STORAGE_IMPL.delete(kb_id, chunk_id)
     except Exception:
-        logging.exception(f"Deleting image of chunk {chunk_id} got exception")
+        _lineaje_payload = f"Deleting image of chunk {chunk_id} got exception"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in delete_image).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:313c4f1b4cc9c8d732209f86e8f95968bb8513a5f43ee63a357949d4ad73c40a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:313c4f1b4cc9c8d732209f86e8f95968bb8513a5f43ee63a357949d4ad73c40a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 773, 'function': 'delete_image'}, 'file': 'rag/svr/task_executor.py', 'line': 773, 'function': 'delete_image', 'agent_name': 'delete_image', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
         raise
 
 
@@ -820,7 +1211,20 @@ async def insert_es(task_id, task_tenant_id, task_dataset_id, chunks, progress_c
         try:
             TaskService.update_chunk_ids(task_id, chunk_ids_str)
         except DoesNotExist:
-            logging.warning(f"do_handle_task update_chunk_ids failed since task {task_id} is unknown.")
+            _lineaje_payload = f"do_handle_task update_chunk_ids failed since task {task_id} is unknown."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in insert_es).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:cab857e4d1925a9babefb4cc8feff2db9dc69fcbe053c62b5030eae7037106a9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cab857e4d1925a9babefb4cc8feff2db9dc69fcbe053c62b5030eae7037106a9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 823, 'function': 'insert_es'}, 'file': 'rag/svr/task_executor.py', 'line': 823, 'function': 'insert_es', 'agent_name': 'insert_es', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             doc_store_result = await asyncio.to_thread(settings.docStoreConn.delete,{"id": chunk_ids},search.index_name(task_tenant_id),task_dataset_id,)
             tasks = []
             for chunk_id in chunk_ids:
@@ -828,7 +1232,20 @@ async def insert_es(task_id, task_tenant_id, task_dataset_id, chunks, progress_c
             try:
                 await asyncio.gather(*tasks, return_exceptions=False)
             except Exception as e:
-                logging.error(f"delete_image failed: {e}")
+                _lineaje_payload = f"delete_image failed: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in insert_es).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:941ca6ba6342d6e1b4ce13bedf3fbbbef2efa0e7d701151121d8fe66188d3ed7'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:941ca6ba6342d6e1b4ce13bedf3fbbbef2efa0e7d701151121d8fe66188d3ed7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 831, 'function': 'insert_es'}, 'file': 'rag/svr/task_executor.py', 'line': 831, 'function': 'insert_es', 'agent_name': 'insert_es', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
                 for t in tasks:
                     t.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
@@ -879,11 +1296,34 @@ async def do_handle_task(task):
     try:
         # bind embedding model
         embedding_model = LLMBundle(task_tenant_id, LLMType.EMBEDDING, llm_name=task_embedding_id, lang=task_language)
-        vts, _ = embedding_model.encode(["ok"])
+        _lineaje_payload = ["ok"]
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in do_handle_task).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1ddecf69fdd8ef0fdef2ba55888893578c512d8252657cd2ec8ffff1abeae378'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1ddecf69fdd8ef0fdef2ba55888893578c512d8252657cd2ec8ffff1abeae378', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 882, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 882, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=882))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        vts, _ = embedding_model.encode(_lineaje_payload)
         vector_size = len(vts[0])
     except Exception as e:
         error_message = f'Fail to bind embedding model: {str(e)}'
         progress_callback(-1, msg=error_message)
+        # LINEAJE: runtime guardrail checks `error_message` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `error_message` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b6a49b3b1124d25669caf1adb1d25c73df4c0558308ebc1a263c9baff5f877d4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b6a49b3b1124d25669caf1adb1d25c73df4c0558308ebc1a263c9baff5f877d4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 887, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 887, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            error_message = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, error_message, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.exception(error_message)
         raise
 
@@ -925,7 +1365,20 @@ async def do_handle_task(task):
 
         if should_skip_raptor(file_type, parser_id, task_parser_config, raptor_config):
             skip_reason = get_skip_reason(file_type, parser_id, task_parser_config)
-            logging.info(f"Skipping Raptor for document {task_document_name}: {skip_reason}")
+            _lineaje_payload = f"Skipping Raptor for document {task_document_name}: {skip_reason}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:97c21c3e3f10fdea019a5ca275105b958856abfe4e9eff449b012e2b6872b376'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:97c21c3e3f10fdea019a5ca275105b958856abfe4e9eff449b012e2b6872b376', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 928, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 928, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             progress_callback(prog=1.0, msg=f"Raptor skipped: {skip_reason}")
             return
 
@@ -991,7 +1444,20 @@ async def do_handle_task(task):
                 with_resolution=with_resolution,
                 with_community=with_community,
             )
-            logging.info(f"GraphRAG task result for task {task}:\n{result}")
+            _lineaje_payload = f"GraphRAG task result for task {task}:\n{result}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f8dfe06b53826978874fc9a41ad9f7ae7345fdba1d0f8ff41261f5da62aacd76'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f8dfe06b53826978874fc9a41ad9f7ae7345fdba1d0f8ff41261f5da62aacd76', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 994, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 994, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
         progress_callback(prog=1.0, msg="Knowledge Graph done ({:.2f}s)".format(timer() - start_ts))
         return
     elif task_type == "mindmap":
@@ -1002,7 +1468,20 @@ async def do_handle_task(task):
         # Standard chunking methods
         start_ts = timer()
         chunks = await build_chunks(task, progress_callback)
-        logging.info("Build document {}: {:.2f}s".format(task_document_name, timer() - start_ts))
+        _lineaje_payload = "Build document {}: {:.2f}s".format(task_document_name, timer() - start_ts)
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e043743536028804a6f60b137bf15339e6f4b200b4e318efae4774603861f2a1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e043743536028804a6f60b137bf15339e6f4b200b4e318efae4774603861f2a1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1005, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1005, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         if not chunks:
             progress_callback(1., msg=f"No chunk built from {task_document_name}")
             return
@@ -1013,10 +1492,34 @@ async def do_handle_task(task):
         except Exception as e:
             error_message = "Generate embedding error:{}".format(str(e))
             progress_callback(-1, error_message)
+            # LINEAJE: runtime guardrail checks `error_message` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `error_message` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9608a7346113d0b02387859f1fd94bdfebfa873d43213d57593371ef1e387712'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9608a7346113d0b02387859f1fd94bdfebfa873d43213d57593371ef1e387712', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1016, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1016, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                error_message = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, error_message, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(error_message)
             token_count = 0
             raise
         progress_message = "Embedding chunks ({:.2f}s)".format(timer() - start_ts)
+        # LINEAJE: runtime guardrail checks `progress_message` as it flows from the agent to the application log, before it is written to the log (in do_handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `progress_message` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6a82e1ee30958027ac3c9889b8ce54ee5389a63f4c4b4e698a13c195d631a7cf'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6a82e1ee30958027ac3c9889b8ce54ee5389a63f4c4b4e698a13c195d631a7cf', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1020, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1020, 'function': 'do_handle_task', 'agent_name': 'do_handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            progress_message = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, progress_message, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.info(progress_message)
         progress_callback(msg=progress_message)
         if task["parser_id"].lower() == "naive" and task["parser_config"].get("toc_extraction", False):
@@ -1035,10 +1538,23 @@ async def do_handle_task(task):
         if not await _maybe_insert_es(chunks):
             return
 
-        logging.info(
-            "Indexing doc({}), page({}-{}), chunks({}), elapsed: {:.2f}".format(
+        _lineaje_payload = ("Indexing doc({}), page({}-{}), chunks({}), elapsed: {:.2f}".format(
                 task_document_name, task_from_page, task_to_page, len(chunks), timer() - start_ts
-            )
+            ))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _maybe_insert_es).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:53d3f9488d15dbd06d8d7e83f20c1cc00e3afc8f979fc21c92f3d66b5120a99c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:53d3f9488d15dbd06d8d7e83f20c1cc00e3afc8f979fc21c92f3d66b5120a99c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1038, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1038, 'function': '_maybe_insert_es', 'agent_name': '_maybe_insert_es', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(
+            _lineaje_payload
         )
 
         DocumentService.increment_chunk_num(task_doc_id, task_dataset_id, token_count, chunk_count, 0)
@@ -1058,10 +1574,23 @@ async def do_handle_task(task):
 
         task_time_cost = timer() - task_start_ts
         progress_callback(prog=1.0, msg="Task done ({:.2f}s)".format(task_time_cost))
-        logging.info(
-            "Chunk doc({}), page({}-{}), chunks({}), token({}), elapsed:{:.2f}".format(
+        _lineaje_payload = ("Chunk doc({}), page({}-{}), chunks({}), token({}), elapsed:{:.2f}".format(
                 task_document_name, task_from_page, task_to_page, len(chunks), token_count, task_time_cost
-            )
+            ))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _maybe_insert_es).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ecc9b64c3d11515f15e948eb7ba60a840b508d9c7f5b482a76a50046be71f650'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ecc9b64c3d11515f15e948eb7ba60a840b508d9c7f5b482a76a50046be71f650', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1061, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1061, 'function': '_maybe_insert_es', 'agent_name': '_maybe_insert_es', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(
+            _lineaje_payload
         )
 
     finally:
@@ -1080,8 +1609,21 @@ async def do_handle_task(task):
                         task_dataset_id,
                     )
             except Exception:
+                _lineaje_payload = f"Remove doc({task_doc_id}) from docStore failed when task({task_id}) canceled."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _maybe_insert_es).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:42ba810a53b5f05ff58aea3b5454ccecec20bdda2745d4fc0e32babf9178c7ab'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:42ba810a53b5f05ff58aea3b5454ccecec20bdda2745d4fc0e32babf9178c7ab', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1083, 'function': 'do_handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1083, 'function': '_maybe_insert_es', 'agent_name': '_maybe_insert_es', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.exception(
-                    f"Remove doc({task_doc_id}) from docStore failed when task({task_id}) canceled."
+                    _lineaje_payload
                 )
 
 async def handle_task():
@@ -1096,12 +1638,58 @@ async def handle_task():
     pipeline_task_type = TASK_TYPE_TO_PIPELINE_TASK_TYPE.get(task_type, PipelineTaskType.PARSE) or PipelineTaskType.PARSE
 
     try:
-        logging.info(f"handle_task begin for task {json.dumps(task)}")
+        # LINEAJE: runtime guardrail checks `task` as it flows from the agent to an external endpoint, before it leaves the application (in handle_task).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `task` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:49b9b502db346d43f54cc828628b0971b4bf50391a3c99752dabd6c8327c27a0'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:49b9b502db346d43f54cc828628b0971b4bf50391a3c99752dabd6c8327c27a0', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1099, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1099, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            task = _gr_client.enforce(_gr_site, task, content_type='application/json', variable_name='task', source_file=__file__, before_line=1099)
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        _lineaje_payload = f"handle_task begin for task {json.dumps(task)}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b249a955af57937c3653fc0d1ec079768b51fc442a4242ef29d4e884ad1c3064'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b249a955af57937c3653fc0d1ec079768b51fc442a4242ef29d4e884ad1c3064', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1099, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1099, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         CURRENT_TASKS[task["id"]] = copy.deepcopy(task)
         await do_handle_task(task)
         DONE_TASKS += 1
         CURRENT_TASKS.pop(task["id"], None)
-        logging.info(f"handle_task done for task {json.dumps(task)}")
+        # LINEAJE: runtime guardrail checks `task` as it flows from the agent to an external endpoint, before it leaves the application (in handle_task).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `task` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:16e296d86f54f5c7e662e0924bf885098392266e5936c91323742fe8972933ea'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:16e296d86f54f5c7e662e0924bf885098392266e5936c91323742fe8972933ea', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1104, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1104, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            task = _gr_client.enforce(_gr_site, task, content_type='application/json', variable_name='task', source_file=__file__, before_line=1104)
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        _lineaje_payload = f"handle_task done for task {json.dumps(task)}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3b469f54461eb27ae00e7b9a6f12f5e8ddfc2f3f0005d27fa3e536d99de93568'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3b469f54461eb27ae00e7b9a6f12f5e8ddfc2f3f0005d27fa3e536d99de93568', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1104, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1104, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     except Exception as e:
         FAILED_TASKS += 1
         CURRENT_TASKS.pop(task["id"], None)
@@ -1113,7 +1701,30 @@ async def handle_task():
             set_progress(task["id"], prog=-1, msg=f"[Exception]: {err_msg}")
         except Exception:
             pass
-        logging.exception(f"handle_task got exception for task {json.dumps(task)}")
+        # LINEAJE: runtime guardrail checks `task` as it flows from the agent to an external endpoint, before it leaves the application (in handle_task).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `task` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:19c173f6a2ba67dbe85560d6fd1fdb54dc097e65795deee2ce8028b29e563399'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:19c173f6a2ba67dbe85560d6fd1fdb54dc097e65795deee2ce8028b29e563399', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1116, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1116, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            task = _gr_client.enforce(_gr_site, task, content_type='application/json', variable_name='task', source_file=__file__, before_line=1116)
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        _lineaje_payload = f"handle_task got exception for task {json.dumps(task)}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in handle_task).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f3ab50908c20ed43978bd8850c2eec30609a3556241254725658980d177cc6f3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f3ab50908c20ed43978bd8850c2eec30609a3556241254725658980d177cc6f3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1116, 'function': 'handle_task'}, 'file': 'rag/svr/task_executor.py', 'line': 1116, 'function': 'handle_task', 'agent_name': 'handle_task', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
     finally:
         task_document_ids = []
         if task_type in ["graphrag", "raptor", "mindmap"]:
@@ -1131,7 +1742,20 @@ async def get_server_ip() -> str:
             s.connect(("8.8.8.8", 80))
             return s.getsockname()[0]
     except Exception as e:
-        logging.error(str(e))
+        _lineaje_payload = str(e)
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in get_server_ip).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e1a0c48473fbe42180fdcba19b263967bb23a6975977036b8924ba69012150f3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e1a0c48473fbe42180fdcba19b263967bb23a6975977036b8924ba69012150f3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1134, 'function': 'get_server_ip'}, 'file': 'rag/svr/task_executor.py', 'line': 1134, 'function': 'get_server_ip', 'agent_name': 'get_server_ip', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.error(_lineaje_payload)
         return 'Unknown'
 
 
@@ -1150,7 +1774,7 @@ async def report_status():
             pid = os.getpid()
             ip_address = await get_server_ip()
             current = copy.deepcopy(CURRENT_TASKS)
-            heartbeat = json.dumps({
+            _lineaje_payload = ({
                 "ip_address": ip_address,
                 "pid": pid,
                 "name": CONSUMER_NAME,
@@ -1162,8 +1786,32 @@ async def report_status():
                 "failed": FAILED_TASKS,
                 "current": current,
             })
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to an external endpoint, before it leaves the application (in report_status).
+            #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:4162bea7e84662eb5a45e9e2c0275efbb7c180afa3cf69d1de09df4d3fd63703'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4162bea7e84662eb5a45e9e2c0275efbb7c180afa3cf69d1de09df4d3fd63703', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1153, 'function': 'report_status'}, 'file': 'rag/svr/task_executor.py', 'line': 1153, 'function': 'report_status', 'agent_name': 'report_status', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=1153))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            heartbeat = json.dumps(_lineaje_payload)
             REDIS_CONN.zadd(CONSUMER_NAME, heartbeat, now.timestamp())
-            logging.info(f"{CONSUMER_NAME} reported heartbeat: {heartbeat}")
+            _lineaje_payload = f"{CONSUMER_NAME} reported heartbeat: {heartbeat}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in report_status).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:d7e84a5320fe60743834bce69ec17f8555e68b1ac177fd6f468a945132ecc64f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d7e84a5320fe60743834bce69ec17f8555e68b1ac177fd6f468a945132ecc64f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1166, 'function': 'report_status'}, 'file': 'rag/svr/task_executor.py', 'line': 1166, 'function': 'report_status', 'agent_name': 'report_status', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
 
             expired = REDIS_CONN.zcount(CONSUMER_NAME, 0, now.timestamp() - 60 * 30)
             if expired > 0:
@@ -1179,11 +1827,37 @@ async def report_status():
                         consumer_name, now.timestamp() - WORKER_HEARTBEAT_TIMEOUT, now.timestamp() + 10
                     )
                     if expired == 0:
-                        logging.info(f"{consumer_name} expired, removed")
+                        _lineaje_payload = f"{consumer_name} expired, removed"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in report_status).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:dd984d405d17294bae76aab0f1df816cc2458c8dde48a39d70419a2f19dadc05'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:dd984d405d17294bae76aab0f1df816cc2458c8dde48a39d70419a2f19dadc05', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1182, 'function': 'report_status'}, 'file': 'rag/svr/task_executor.py', 'line': 1182, 'function': 'report_status', 'agent_name': 'report_status', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        logging.info(_lineaje_payload)
                         REDIS_CONN.srem("TASKEXE", consumer_name)
                         REDIS_CONN.delete(consumer_name)
         except Exception:
-            logging.exception("report_status got exception")
+            _lineaje_payload = "report_status got exception"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in report_status).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:d71be9c520b2412a8d21205aa914f9e2cfdeca5fba71c83a2b1bd40919738689'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d71be9c520b2412a8d21205aa914f9e2cfdeca5fba71c83a2b1bd40919738689', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1186, 'function': 'report_status'}, 'file': 'rag/svr/task_executor.py', 'line': 1186, 'function': 'report_status', 'agent_name': 'report_status', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
         finally:
             redis_lock.release()
         await asyncio.sleep(30)
@@ -1205,12 +1879,25 @@ async def main():
         # This spreads out connection attempts over several seconds
         startup_delay = worker_num * 2.0 + random.uniform(0, 0.5)
         if startup_delay > 0:
-            logging.info(f"Staggering startup by {startup_delay:.2f}s to prevent connection storm")
+            _lineaje_payload = f"Staggering startup by {startup_delay:.2f}s to prevent connection storm"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a109a7ba7b1f92b15c3aacefc90ca552142dd7d9ba58a7ef91fa7bfd89b3e5b1'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a109a7ba7b1f92b15c3aacefc90ca552142dd7d9ba58a7ef91fa7bfd89b3e5b1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1208, 'function': 'main'}, 'file': 'rag/svr/task_executor.py', 'line': 1208, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             await asyncio.sleep(startup_delay)
     except (ValueError, IndexError):
         pass  # Non-standard consumer name, skip delay
 
-    logging.info(r"""
+    _lineaje_payload = (r"""
     ____                      __  _
    /  _/___  ____ ____  _____/ /_(_)___  ____     ________  ______   _____  _____
    / // __ \/ __ `/ _ \/ ___/ __/ / __ \/ __ \   / ___/ _ \/ ___/ | / / _ \/ ___/
@@ -1218,11 +1905,50 @@ async def main():
 /___/_/ /_/\__, /\___/____/\__/_/\____/_/ /_/  /____/\___/_/    |___/\___/_/
           /____/
     """)
-    logging.info(f'RAGFlow version: {get_ragflow_version()}')
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:bb5368d2abe21383b784de49f13df22f3fda3f6f0ae5b849a0e57332b3184c88'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bb5368d2abe21383b784de49f13df22f3fda3f6f0ae5b849a0e57332b3184c88', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1213, 'function': 'main'}, 'file': 'rag/svr/task_executor.py', 'line': 1213, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
+    _lineaje_payload = f'RAGFlow version: {get_ragflow_version()}'
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:c7e110f170f05b36fd97447bf773693bebceb572a29bbf6b771f79686f4b1de7'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c7e110f170f05b36fd97447bf773693bebceb572a29bbf6b771f79686f4b1de7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1221, 'function': 'main'}, 'file': 'rag/svr/task_executor.py', 'line': 1221, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     show_configs()
     settings.init_settings()
     settings.check_and_install_torch()
-    logging.info(f'default embedding config: {settings.EMBEDDING_CFG}')
+    _lineaje_payload = f'default embedding config: {settings.EMBEDDING_CFG}'
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:cec3712ef1364e748c56558f602111e2dfc916a4dfa1645fa91b1b892d2f0694'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cec3712ef1364e748c56558f602111e2dfc916a4dfa1645fa91b1b892d2f0694', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1225, 'function': 'main'}, 'file': 'rag/svr/task_executor.py', 'line': 1225, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
     settings.print_rag_settings()
     if sys.platform != "win32":
         signal.signal(signal.SIGUSR1, start_tracemalloc_and_snapshot)
@@ -1247,7 +1973,20 @@ async def main():
         await asyncio.gather(*tasks, return_exceptions=True)
         report_task.cancel()
         await asyncio.gather(report_task, return_exceptions=True)
-    logging.error("BUG!!! You should not reach here!!!")
+    _lineaje_payload = "BUG!!! You should not reach here!!!"
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:07c12692555b23b7974e2be228e10fb3efcfb15f4768cdb1a55f29a4a5c30d91'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:07c12692555b23b7974e2be228e10fb3efcfb15f4768cdb1a55f29a4a5c30d91', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/svr/task_executor.py', 'line': 1250, 'function': 'main'}, 'file': 'rag/svr/task_executor.py', 'line': 1250, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.error(_lineaje_payload)
 
 if __name__ == "__main__":
     faulthandler.enable()
