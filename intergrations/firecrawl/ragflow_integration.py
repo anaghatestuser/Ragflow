@@ -2,6 +2,24 @@
 Main integration file for Firecrawl with RAGFlow.
 This file provides the interface between RAGFlow and the Firecrawl plugin.
 """
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import logging
 from typing import List, Dict, Any
@@ -36,6 +54,18 @@ class RAGFlowFirecrawlIntegration:
             # Process into RAGFlow documents
             documents = self.processor.process_batch(scraped_contents)
             
+            # LINEAJE: runtime guardrail checks `documents` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowFirecrawlIntegration.scrape_and_import).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `documents` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:61d9a429609f94021e1db6e713af727df8872078b4343292847e657c608c16f9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:61d9a429609f94021e1db6e713af727df8872078b4343292847e657c608c16f9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 39, 'function': 'RAGFlowFirecrawlIntegration.scrape_and_import'}, 'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 39, 'function': 'scrape_and_import', 'agent_name': 'RAGFlowFirecrawlIntegration', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                documents = _gr_client.enforce(_gr_site, documents, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return documents
     
     async def crawl_and_import(self, start_url: str, 
@@ -61,6 +91,18 @@ class RAGFlowFirecrawlIntegration:
             # Process into RAGFlow documents
             documents = self.processor.process_batch(completed_job.data or [])
             
+            # LINEAJE: runtime guardrail checks `documents` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowFirecrawlIntegration.crawl_and_import).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `documents` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:de5966c68468cf5624a0fa2e370fba375968283038ce390ef4022ca628d52a9c'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:de5966c68468cf5624a0fa2e370fba375968283038ce390ef4022ca628d52a9c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 64, 'function': 'RAGFlowFirecrawlIntegration.crawl_and_import'}, 'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 64, 'function': 'crawl_and_import', 'agent_name': 'RAGFlowFirecrawlIntegration', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                documents = _gr_client.enforce(_gr_site, documents, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return documents
     
     def get_ui_schema(self) -> Dict[str, Any]:
@@ -105,6 +147,18 @@ class RAGFlowFirecrawlIntegration:
         except (ValueError, TypeError):
             errors["rate_limit_delay"] = "Rate limit delay must be a valid number"
         
+        # LINEAJE: runtime guardrail checks `errors` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowFirecrawlIntegration.validate_config).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `errors` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8d35340120c134f6cf7484b31a34ef9385f29d6c8b77eafbeeea437fc36c91e2'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8d35340120c134f6cf7484b31a34ef9385f29d6c8b77eafbeeea437fc36c91e2', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 108, 'function': 'RAGFlowFirecrawlIntegration.validate_config'}, 'file': 'intergrations/firecrawl/ragflow_integration.py', 'line': 108, 'function': 'validate_config', 'agent_name': 'RAGFlowFirecrawlIntegration', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            errors = _gr_client.enforce(_gr_site, errors, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return errors
     
     def create_config(self, config_dict: Dict[str, Any]) -> FirecrawlConfig:
