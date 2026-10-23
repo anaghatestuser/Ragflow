@@ -1,4 +1,22 @@
 """Blob storage connector"""
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 import logging
 import os
 from datetime import datetime, timezone
@@ -45,13 +63,39 @@ class BlobStorageConnector(LoadConnector, PollConnector):
 
     def set_allow_images(self, allow_images: bool) -> None:
         """Set whether to process images"""
-        logging.info(f"Setting allow_images to {allow_images}.")
+        _lineaje_payload = f"Setting allow_images to {allow_images}."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BlobStorageConnector.set_allow_images).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c42139d153ec4a5dff1d08d4766436a5660c2fd70aad2accd5f881e3a62daeb5'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c42139d153ec4a5dff1d08d4766436a5660c2fd70aad2accd5f881e3a62daeb5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/blob_connector.py', 'line': 48, 'function': 'BlobStorageConnector.set_allow_images'}, 'file': 'common/data_source/blob_connector.py', 'line': 48, 'function': 'set_allow_images', 'agent_name': 'BlobStorageConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         self._allow_images = allow_images
 
     def load_credentials(self, credentials: dict[str, Any]) -> dict[str, Any] | None:
         """Load credentials"""
+        _lineaje_payload = f"Loading credentials for {self.bucket_name} of type {self.bucket_type}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BlobStorageConnector.load_credentials).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:321109bb78107bc8695346c2eb5123234cab9db3c7bc22f2e5645ad73b9b0c19'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:321109bb78107bc8695346c2eb5123234cab9db3c7bc22f2e5645ad73b9b0c19', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/blob_connector.py', 'line': 53, 'function': 'BlobStorageConnector.load_credentials'}, 'file': 'common/data_source/blob_connector.py', 'line': 53, 'function': 'load_credentials', 'agent_name': 'BlobStorageConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logging.debug(
-            f"Loading credentials for {self.bucket_name} of type {self.bucket_type}"
+            _lineaje_payload
         )
 
         # Validate credentials
@@ -158,8 +202,21 @@ class BlobStorageConnector(LoadConnector, PollConnector):
                 and isinstance(size_bytes, int)
                 and size_bytes > self.size_threshold
             ):
+                _lineaje_payload = f"{file_name} exceeds size threshold of {self.size_threshold}. Skipping."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BlobStorageConnector._yield_blob_objects).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e90c52d47570b2bf78a63049afa8ea0828472ab798903a5dc48252636fd40c7b'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e90c52d47570b2bf78a63049afa8ea0828472ab798903a5dc48252636fd40c7b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/blob_connector.py', 'line': 161, 'function': 'BlobStorageConnector._yield_blob_objects'}, 'file': 'common/data_source/blob_connector.py', 'line': 161, 'function': '_yield_blob_objects', 'agent_name': 'BlobStorageConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.warning(
-                    f"{file_name} exceeds size threshold of {self.size_threshold}. Skipping."
+                    _lineaje_payload
                 )
                 continue
             
@@ -193,14 +250,40 @@ class BlobStorageConnector(LoadConnector, PollConnector):
                     batch = []
 
             except Exception:
-                logging.exception(f"Error decoding object {key}")
+                _lineaje_payload = f"Error decoding object {key}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BlobStorageConnector._yield_blob_objects).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:88bc1e4fc89a5330f5dbb65380a571b79e037c9db517cd409c32a533df794c3c'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:88bc1e4fc89a5330f5dbb65380a571b79e037c9db517cd409c32a533df794c3c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/blob_connector.py', 'line': 196, 'function': 'BlobStorageConnector._yield_blob_objects'}, 'file': 'common/data_source/blob_connector.py', 'line': 196, 'function': '_yield_blob_objects', 'agent_name': 'BlobStorageConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.exception(_lineaje_payload)
         
         if batch:
             yield batch
 
     def load_from_state(self) -> GenerateDocumentsOutput:
         """Load documents from state"""
-        logging.debug("Loading blob objects")
+        _lineaje_payload = "Loading blob objects"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BlobStorageConnector.load_from_state).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2926d98364e48cdd70b278bec39562f5bbc6c5ea0fc5e56665b278e0a527e437'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2926d98364e48cdd70b278bec39562f5bbc6c5ea0fc5e56665b278e0a527e437', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/blob_connector.py', 'line': 203, 'function': 'BlobStorageConnector.load_from_state'}, 'file': 'common/data_source/blob_connector.py', 'line': 203, 'function': 'load_from_state', 'agent_name': 'BlobStorageConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         return self._yield_blob_objects(
             start=datetime(1970, 1, 1, tzinfo=timezone.utc),
             end=datetime.now(timezone.utc),
