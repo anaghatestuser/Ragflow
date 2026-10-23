@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -192,6 +210,16 @@ class OpenAITTS(Base):
         payload = {"model": self.model_name, "voice": voice, "input": text}
 
         response = requests.post(f"{self.base_url}/audio/speech", headers=self.headers, json=payload, stream=True)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in OpenAITTS.tts).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:43488555787acaca5ec4702b37d2f4364ea881b67eb9b7ddfc1a8c83439b373c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:43488555787acaca5ec4702b37d2f4364ea881b67eb9b7ddfc1a8c83439b373c', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 194, 'function': 'OpenAITTS.tts'}, 'file': 'rag/llm/tts_model.py', 'line': 194, 'function': 'tts', 'agent_name': 'OpenAITTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=194)
+        except _gr_client.GuardrailUnavailableError:
+            pass
 
         if response.status_code != 200:
             raise Exception(f"**Error**: {response.status_code}, {response.text}")
@@ -231,6 +259,18 @@ class SparkTTS(Base):
         authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(encoding="utf-8")
         v = {"authorization": authorization, "date": date, "host": "ws-api.xfyun.cn"}
         url = url + "?" + urlencode(v)
+        # LINEAJE: runtime guardrail checks `url` as it flows from the agent to the user interface, before it leaves the application (in SparkTTS.create_url).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `url` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b6f9619e79b669aefde4feb92291c6913db5a082fc5ae22172e3754e42b88a6b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b6f9619e79b669aefde4feb92291c6913db5a082fc5ae22172e3754e42b88a6b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 234, 'function': 'SparkTTS.create_url'}, 'file': 'rag/llm/tts_model.py', 'line': 234, 'function': 'create_url', 'agent_name': 'SparkTTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            url = _gr_client.enforce(_gr_site, url, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return url
 
     def tts(self, text):
@@ -268,6 +308,16 @@ class SparkTTS(Base):
             def on_open(self, ws):
                 def run(*args):
                     d = {"common": CommonArgs, "business": BusinessArgs, "data": Data}
+                    # LINEAJE: runtime guardrail checks `d` as it flows from the agent to an external endpoint, before it leaves the application (in Callback.run).
+                    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `d` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:2375d7a13d69cefe534e42af26d226654c699181a17bff0fc8022a4cc43102a7'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2375d7a13d69cefe534e42af26d226654c699181a17bff0fc8022a4cc43102a7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 271, 'function': 'SparkTTS.tts.Callback.on_open.run'}, 'file': 'rag/llm/tts_model.py', 'line': 271, 'function': 'run', 'agent_name': 'Callback', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        d = _gr_client.enforce(_gr_site, d, content_type='application/json', variable_name='d', source_file=__file__, before_line=271)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     ws.send(json.dumps(d))
 
                 thread.start_new_thread(run, ())
@@ -301,6 +351,16 @@ class XinferenceTTS(Base):
         payload = {"model": self.model_name, "input": text, "voice": voice}
 
         response = requests.post(f"{self.base_url}/v1/audio/speech", headers=self.headers, json=payload, stream=stream)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in XinferenceTTS.tts).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:bac9b2a4f5fa2ee4dc44f574d568d3ddef82f3a7fb41cd9d8a76c6b9f3599414'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bac9b2a4f5fa2ee4dc44f574d568d3ddef82f3a7fb41cd9d8a76c6b9f3599414', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 303, 'function': 'XinferenceTTS.tts'}, 'file': 'rag/llm/tts_model.py', 'line': 303, 'function': 'tts', 'agent_name': 'XinferenceTTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=303)
+        except _gr_client.GuardrailUnavailableError:
+            pass
 
         if response.status_code != 200:
             raise Exception(f"**Error**: {response.status_code}, {response.text}")
@@ -324,6 +384,16 @@ class OllamaTTS(Base):
         payload = {"model": self.model_name, "voice": voice, "input": text}
 
         response = requests.post(f"{self.base_url}/audio/tts", headers=self.headers, json=payload, stream=True)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in OllamaTTS.tts).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8e175843a0832ee2fa73120c1b7e1d054213ac4008724afe71c6fa52b05528a1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8e175843a0832ee2fa73120c1b7e1d054213ac4008724afe71c6fa52b05528a1', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 326, 'function': 'OllamaTTS.tts'}, 'file': 'rag/llm/tts_model.py', 'line': 326, 'function': 'tts', 'agent_name': 'OllamaTTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=326)
+        except _gr_client.GuardrailUnavailableError:
+            pass
 
         if response.status_code != 200:
             raise Exception(f"**Error**: {response.status_code}, {response.text}")
@@ -346,6 +416,16 @@ class GPUStackTTS(Base):
         payload = {"model": self.model_name, "input": text, "voice": voice}
 
         response = requests.post(f"{self.base_url}/v1/audio/speech", headers=self.headers, json=payload, stream=stream)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in GPUStackTTS.tts).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6977ee77b1988d70d2755e06638c4c17acc4cb2eee511db4d0fc6456c91573ca'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6977ee77b1988d70d2755e06638c4c17acc4cb2eee511db4d0fc6456c91573ca', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 348, 'function': 'GPUStackTTS.tts'}, 'file': 'rag/llm/tts_model.py', 'line': 348, 'function': 'tts', 'agent_name': 'GPUStackTTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=348)
+        except _gr_client.GuardrailUnavailableError:
+            pass
 
         if response.status_code != 200:
             raise Exception(f"**Error**: {response.status_code}, {response.text}")
@@ -380,6 +460,16 @@ class SILICONFLOWTTS(Base):
         }
 
         response = requests.post(f"{self.base_url}/audio/speech", headers=self.headers, json=payload)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in SILICONFLOWTTS.tts).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:95f5c3c8416296161fbe2895214d7e4aa70655230d1980c73878b760259119b9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:95f5c3c8416296161fbe2895214d7e4aa70655230d1980c73878b760259119b9', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/tts_model.py', 'line': 382, 'function': 'SILICONFLOWTTS.tts'}, 'file': 'rag/llm/tts_model.py', 'line': 382, 'function': 'tts', 'agent_name': 'SILICONFLOWTTS', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=382)
+        except _gr_client.GuardrailUnavailableError:
+            pass
 
         if response.status_code != 200:
             raise Exception(f"**Error**: {response.status_code}, {response.text}")
