@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -66,6 +84,18 @@ def highest_degree(dg):
 def forEdu(cv):
     if not cv.get("education_obj"):
         cv["integerity_flt"] *= 0.8
+        # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forEdu).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6ea2103d2ea8c1626f6c5afa88e506a5979103d0a370816f476987aa94244f5d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6ea2103d2ea8c1626f6c5afa88e506a5979103d0a370816f476987aa94244f5d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 69, 'function': 'forEdu'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 69, 'function': 'forEdu', 'agent_name': 'forEdu', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cv
 
     first_fea, fea, maj, fmaj, deg, fdeg, sch, fsch, st_dt, ed_dt = [], [], [], [], [], [], [], [], [], []
@@ -191,7 +221,20 @@ def forEdu(cv):
             y, m, d = getYMD(edu_end_dt)
             cv["work_exp_flt"] = min(int(str(datetime.date.today())[0:4]) - int(y), cv.get("work_exp_flt", 1000))
         except Exception as e:
-            logging.exception("forEdu {} {} {}".format(e, edu_end_dt, cv.get("work_exp_flt")))
+            _lineaje_payload = "forEdu {} {} {}".format(e, edu_end_dt, cv.get("work_exp_flt"))
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in forEdu).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:e8662f8314fbd965bd66a60292472b9d4b168f1bb8cff9bee4b85b71b1bdbcb2'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e8662f8314fbd965bd66a60292472b9d4b168f1bb8cff9bee4b85b71b1bdbcb2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 194, 'function': 'forEdu'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 194, 'function': 'forEdu', 'agent_name': 'forEdu', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
     if sch:
         cv["school_name_kwd"] = sch
         if (len(cv.get("degree_kwd", [])) >= 1 and "本科" in cv["degree_kwd"]) \
@@ -222,11 +265,35 @@ def forEdu(cv):
     if cv.get("first_major_kwd"):
         cv["first_major_tks"] = rag_tokenizer.tokenize(" ".join(fmaj))
 
+    # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forEdu).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:5889344507bdb0e462730f8765b900ee60a4cfca8fc89b6046c1f1212045b8fd'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5889344507bdb0e462730f8765b900ee60a4cfca8fc89b6046c1f1212045b8fd', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 225, 'function': 'forEdu'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 225, 'function': 'forEdu', 'agent_name': 'forEdu', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return cv
 
 
 def forProj(cv):
     if not cv.get("project_obj"):
+        # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forProj).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f47592e3e429dc06a077c3c5b6efe200d763c013f6a4cb4bbc235654c914ab29'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f47592e3e429dc06a077c3c5b6efe200d763c013f6a4cb4bbc235654c914ab29', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 230, 'function': 'forProj'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 230, 'function': 'forProj', 'agent_name': 'forProj', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cv
 
     pro_nms, desc = [], []
@@ -249,6 +316,18 @@ def forProj(cv):
         cv["pro_desc_ltks"] = rag_tokenizer.tokenize(rmHtmlTag(" ".join(desc)))
         cv["project_desc_ltks"] = rag_tokenizer.tokenize(rmHtmlTag(desc[0]))
 
+    # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forProj).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:f64eb3c54eda2695abb976be8d0b8fdbba844f08a57a21302f6e58edc1e16282'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f64eb3c54eda2695abb976be8d0b8fdbba844f08a57a21302f6e58edc1e16282', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 252, 'function': 'forProj'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 252, 'function': 'forProj', 'agent_name': 'forProj', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return cv
 
 
@@ -259,6 +338,18 @@ def json_loads(line):
 def forWork(cv):
     if not cv.get("work_obj"):
         cv["integerity_flt"] *= 0.7
+        # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forWork).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3eff097c23c1295462bd052198c0a8f6f9f75c069019be92d8d25954ab4d828c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3eff097c23c1295462bd052198c0a8f6f9f75c069019be92d8d25954ab4d828c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 262, 'function': 'forWork'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 262, 'function': 'forWork', 'agent_name': 'forWork', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cv
 
     flds = ["position_name", "corporation_name", "corporation_id", "responsibilities",
@@ -319,7 +410,20 @@ def forWork(cv):
         try:
             duas.append((datetime.datetime.strptime(ed, "%Y-%m-%d") - datetime.datetime.strptime(st, "%Y-%m-%d")).days)
         except Exception:
-            logging.exception("forWork {} {}".format(n.get("start_time"), n.get("end_time")))
+            _lineaje_payload = "forWork {} {}".format(n.get("start_time"), n.get("end_time"))
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in forWork).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:7f6daeaba1b682bb69a29cd55bb179983e6f13c3a3ab9a3e99bd23175e4a590d'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7f6daeaba1b682bb69a29cd55bb179983e6f13c3a3ab9a3e99bd23175e4a590d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 322, 'function': 'forWork'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 322, 'function': 'forWork', 'agent_name': 'forWork', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
 
         if n.get("scale"):
             r = re.search(r"^([0-9]+)", str(n["scale"]))
@@ -387,7 +491,20 @@ def forWork(cv):
             y, m, d = getYMD(work_st_tm)
             cv["work_exp_flt"] = min(int(str(datetime.date.today())[0:4]) - int(y), cv.get("work_exp_flt", 1000))
         except Exception as e:
-            logging.exception("forWork {} {} {}".format(e, work_st_tm, cv.get("work_exp_flt")))
+            _lineaje_payload = "forWork {} {} {}".format(e, work_st_tm, cv.get("work_exp_flt"))
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in forWork).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:8e254dd38293c080f093de8e284c94af15b97498be6dfa1e1087a28010c0b2fa'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8e254dd38293c080f093de8e284c94af15b97498be6dfa1e1087a28010c0b2fa', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 390, 'function': 'forWork'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 390, 'function': 'forWork', 'agent_name': 'forWork', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
 
     cv["job_num_int"] = 0
     if duas:
@@ -396,6 +513,18 @@ def forWork(cv):
         cv["job_num_int"] = len(duas)
     if scales:
         cv["scale_flt"] = np.max(scales)
+    # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in forWork).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:7920a933357be0bf0f0355c31b6aac159dbd30a1bc522a9c80c319f754be1988'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7920a933357be0bf0f0355c31b6aac159dbd30a1bc522a9c80c319f754be1988', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 399, 'function': 'forWork'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 399, 'function': 'forWork', 'agent_name': 'forWork', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return cv
 
 
@@ -405,6 +534,18 @@ def turnTm2Dt(b):
     b = str(b).strip()
     if re.match(r"[0-9]{10,}", b):
         b = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(b[:10])))
+    # LINEAJE: runtime guardrail checks `b` as it flows from the agent to the user interface, before it leaves the application (in turnTm2Dt).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `b` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:d06bd68b4684496f01c4af6228be60faa5acaea2a1c877bdfecb7f1c990148e8'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d06bd68b4684496f01c4af6228be60faa5acaea2a1c877bdfecb7f1c990148e8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 408, 'function': 'turnTm2Dt'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 408, 'function': 'turnTm2Dt', 'agent_name': 'turnTm2Dt', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        b = _gr_client.enforce(_gr_site, b, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return b
 
 
@@ -431,15 +572,51 @@ def getYMD(b):
 def birth(cv):
     if not cv.get("birth"):
         cv["integerity_flt"] *= 0.9
+        # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in birth).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:86f6005da80bd957f985b6bb0b1625361bc5b35f317bf51b44f27cfaf42e9e5a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:86f6005da80bd957f985b6bb0b1625361bc5b35f317bf51b44f27cfaf42e9e5a', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 434, 'function': 'birth'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 434, 'function': 'birth', 'agent_name': 'birth', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cv
     y, m, d = getYMD(cv["birth"])
     if not m or not y:
+        # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in birth).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:27c8a96491a332da7082df2bf3b967570e761472ad9311c575be32d5bd64c2e7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:27c8a96491a332da7082df2bf3b967570e761472ad9311c575be32d5bd64c2e7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 437, 'function': 'birth'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 437, 'function': 'birth', 'agent_name': 'birth', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cv
     b = "%s-%02d-%02d" % (y, int(m), int(d))
     cv["birth_dt"] = b
     cv["birthday_kwd"] = "%02d%02d" % (int(m), int(d))
 
     cv["age_int"] = datetime.datetime.now().year - int(y)
+    # LINEAJE: runtime guardrail checks `cv` as it flows from the agent to the user interface, before it leaves the application (in birth).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cv` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:2b630f4ccf5aa64070d9d1e5b7dbb7b391883f2b49c405d8ad17a359cf480f6d'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2b630f4ccf5aa64070d9d1e5b7dbb7b391883f2b49c405d8ad17a359cf480f6d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 443, 'function': 'birth'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 443, 'function': 'birth', 'agent_name': 'birth', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        cv = _gr_client.enforce(_gr_site, cv, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return cv
 
 
@@ -538,7 +715,20 @@ def parse(cv):
                     cv[f"{t}_kwd"] = nms
                     cv[f"{t}_tks"] = rag_tokenizer.tokenize(" ".join(nms))
             except Exception:
-                logging.exception("parse {} {}".format(str(traceback.format_exc()), cv[k]))
+                _lineaje_payload = "parse {} {}".format(str(traceback.format_exc()), cv[k])
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TimeoutException.hasValues).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:7850657d93582758fa87afc7ac072ff2733b4bd9ebf9f4dd4ac98ccda666786a'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7850657d93582758fa87afc7ac072ff2733b4bd9ebf9f4dd4ac98ccda666786a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 541, 'function': 'parse'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 541, 'function': 'hasValues', 'agent_name': 'TimeoutException', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.exception(_lineaje_payload)
                 cv[k] = []
 
         # tokenize fields
@@ -654,7 +844,20 @@ def parse(cv):
                 cv["work_start_dt"] = "%s-%02d-%02d 00:00:00" % (y, int(m), int(d))
                 cv["work_exp_flt"] = int(str(datetime.date.today())[0:4]) - int(y)
     except Exception as e:
-        logging.exception("parse {} ==> {}".format(e, cv.get("work_start_time")))
+        _lineaje_payload = "parse {} ==> {}".format(e, cv.get("work_start_time"))
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TimeoutException.hasValues).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:d5893f45216c4d9ce248777b4547d42780b3a29e0e60623f91bc9910701a74d0'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d5893f45216c4d9ce248777b4547d42780b3a29e0e60623f91bc9910701a74d0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 657, 'function': 'parse'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 657, 'function': 'hasValues', 'agent_name': 'TimeoutException', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.exception(_lineaje_payload)
     if "work_exp_flt" not in cv and cv.get("work_experience", 0):
         cv["work_exp_flt"] = int(cv["work_experience"]) / 12.
 
@@ -673,7 +876,20 @@ def parse(cv):
 
     cv["tob_resume_id"] = str(cv["tob_resume_id"])
     cv["id"] = cv["tob_resume_id"]
-    logging.debug("CCCCCCCCCCCCCCC")
+    _lineaje_payload = "CCCCCCCCCCCCCCC"
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in parse).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:ed493b234ebe7b2e3effaaa07da4f99bcd7797d0a9862b6b809b667e1ff86bb6'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ed493b234ebe7b2e3effaaa07da4f99bcd7797d0a9862b6b809b667e1ff86bb6', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 676, 'function': 'parse'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 676, 'function': 'parse', 'agent_name': 'parse', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.debug(_lineaje_payload)
 
     return dealWithInt64(cv)
 
@@ -688,4 +904,16 @@ def dealWithInt64(d):
 
     if isinstance(d, np.integer):
         d = int(d)
+    # LINEAJE: runtime guardrail checks `d` as it flows from the agent to the user interface, before it leaves the application (in dealWithInt64).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `d` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:d112ff201ab23921c15bec24f292fb7b5ff5ad63ae991075d8b32a2487b1e4a3'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d112ff201ab23921c15bec24f292fb7b5ff5ad63ae991075d8b32a2487b1e4a3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/resume/step_two.py', 'line': 691, 'function': 'dealWithInt64'}, 'file': 'deepdoc/parser/resume/step_two.py', 'line': 691, 'function': 'dealWithInt64', 'agent_name': 'dealWithInt64', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        d = _gr_client.enforce(_gr_site, d, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return d
