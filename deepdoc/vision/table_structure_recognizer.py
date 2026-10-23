@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -57,10 +75,36 @@ class TableStructureRecognizer(Recognizer):
             raise RuntimeError("Unsupported table structure recognizer type.")
 
         if table_structure_recognizer_type == "onnx":
-            logging.debug("Using Onnx table structure recognizer")
+            _lineaje_payload = "Using Onnx table structure recognizer"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:13bc25c1d79d0fcf594e16cd53b82567fdad0fffeb0401f9e2a41a8bd60eb27a'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:13bc25c1d79d0fcf594e16cd53b82567fdad0fffeb0401f9e2a41a8bd60eb27a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 60, 'function': 'TableStructureRecognizer.__call__'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 60, 'function': '__call__', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             tbls = super().__call__(images, thr)
         else:  # ascend
-            logging.debug("Using Ascend table structure recognizer")
+            _lineaje_payload = "Using Ascend table structure recognizer"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:53f0f9e9638da450d846d69ae153bbf0b557586b578e99d13b2075028f7b9799'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:53f0f9e9638da450d846d69ae153bbf0b557586b578e99d13b2075028f7b9799', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 63, 'function': 'TableStructureRecognizer.__call__'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 63, 'function': '__call__', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             tbls = self._run_ascend_tsr(images, thr)
 
         res = []
@@ -108,6 +152,18 @@ class TableStructureRecognizer(Recognizer):
                         b["bottom"] = bottom
 
             res.append(lts)
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in TableStructureRecognizer.__call__).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1508c9f557f030274dd5696e934caf6adecfe5a4d14587022ea0833599b7eba4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1508c9f557f030274dd5696e934caf6adecfe5a4d14587022ea0833599b7eba4', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 111, 'function': 'TableStructureRecognizer.__call__'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 111, 'function': '__call__', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     @staticmethod
@@ -135,6 +191,18 @@ class TableStructureRecognizer(Recognizer):
         ]
         for p, n in patt:
             if re.search(p, b["text"].strip()):
+                # LINEAJE: runtime guardrail checks `n` as it flows from the agent to the user interface, before it leaves the application (in TableStructureRecognizer.blockType).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `n` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:ddf2a598adfad427ff3e4b6078eb2339e1f269960e6d9a2f6c17691c6a113a7f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ddf2a598adfad427ff3e4b6078eb2339e1f269960e6d9a2f6c17691c6a113a7f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 138, 'function': 'TableStructureRecognizer.blockType'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 138, 'function': 'blockType', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    n = _gr_client.enforce(_gr_site, n, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return n
         tks = [t for t in rag_tokenizer.tokenize(b["text"]).split() if len(t) > 1]
         if len(tks) > 3:
@@ -167,7 +235,20 @@ class TableStructureRecognizer(Recognizer):
             b["btype"] = TableStructureRecognizer.blockType(b)
         max_type = Counter([b["btype"] for b in boxes]).items()
         max_type = max(max_type, key=lambda x: x[1])[0] if max_type else ""
-        logging.debug("MAXTYPE: " + max_type)
+        _lineaje_payload = "MAXTYPE: " + max_type
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.construct_table).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:74e0f71f7a0e81cb9c453239756bf49048a1f46fbea9e009c9a43b02d70d0610'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:74e0f71f7a0e81cb9c453239756bf49048a1f46fbea9e009c9a43b02d70d0610', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 170, 'function': 'TableStructureRecognizer.construct_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 170, 'function': 'construct_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
 
         rowh = [b["R_bott"] - b["R_top"] for b in boxes if "R" in b]
         rowh = np.min(rowh) if rowh else 0
@@ -234,7 +315,20 @@ class TableStructureRecognizer(Recognizer):
                     j += 1
                     continue
                 bx = tbl[ii][j][0]
-                logging.debug("Relocate column single: " + bx["text"])
+                _lineaje_payload = "Relocate column single: " + bx["text"]
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.construct_table).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9a5f2c11d64ac3f0283c80c8c4e06d7226c0271104481b4bb5328a5b05ea043e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9a5f2c11d64ac3f0283c80c8c4e06d7226c0271104481b4bb5328a5b05ea043e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 237, 'function': 'TableStructureRecognizer.construct_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 237, 'function': 'construct_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
                 # j column only has one value
                 left, right = 100000, 100000
                 if j > 0 and not f:
@@ -293,7 +387,20 @@ class TableStructureRecognizer(Recognizer):
                     continue
 
                 bx = tbl[i][jj][0]
-                logging.debug("Relocate row single: " + bx["text"])
+                _lineaje_payload = "Relocate row single: " + bx["text"]
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.construct_table).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:b528ba7be6551e701ce2bc8d5c2c1e3251d0ca5c699b5f3198c5d39c51c89d92'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b528ba7be6551e701ce2bc8d5c2c1e3251d0ca5c699b5f3198c5d39c51c89d92', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 296, 'function': 'TableStructureRecognizer.construct_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 296, 'function': 'construct_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
                 # i row only has one value
                 up, down = 100000, 100000
                 if i > 0 and not f:
@@ -390,6 +497,18 @@ class TableStructureRecognizer(Recognizer):
                 row = ""
             html += "\n" + row
         html += "\n</table>"
+        # LINEAJE: runtime guardrail checks `html` as it flows from rendered HTML to the user interface, before it leaves the application (in TableStructureRecognizer.__html_table).
+        #   Detected: this statement moves data from rendered HTML to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `html` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:4f270349e02c9a3415238edd42f2f6af9b0a827abf8fb73c058e39de58210140'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4f270349e02c9a3415238edd42f2f6af9b0a827abf8fb73c058e39de58210140', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='html', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 393, 'function': 'TableStructureRecognizer.__html_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 393, 'function': '__html_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            html = _gr_client.enforce(_gr_site, html, content_type='text/html')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return html
 
     @staticmethod
@@ -436,7 +555,20 @@ class TableStructureRecognizer(Recognizer):
                     else:
                         headers[j][k] = headers[j - 1][k] + (de if headers[j - 1][k] else "") + headers[j][k]
 
-        logging.debug(f">>>>>>>>>>>>>>>>>{cap}：SIZE:{rowno}X{clmno} Header: {hdr_rowno}")
+        _lineaje_payload = f">>>>>>>>>>>>>>>>>{cap}：SIZE:{rowno}X{clmno} Header: {hdr_rowno}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TableStructureRecognizer.__desc_table).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e970ff90735b7eb10f79eff84bfa7aeaca716f36e8d72a208831acf467226dec'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e970ff90735b7eb10f79eff84bfa7aeaca716f36e8d72a208831acf467226dec', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 439, 'function': 'TableStructureRecognizer.__desc_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 439, 'function': '__desc_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         row_txt = []
         for i in range(rowno):
             if i in hdr_rowno:
@@ -490,6 +622,18 @@ class TableStructureRecognizer(Recognizer):
             else:
                 from_ = "来自"
             row_txt = [t + f"\t——{from_}“{cap}”" for t in row_txt]
+        # LINEAJE: runtime guardrail checks `row_txt` as it flows from the agent to the user interface, before it leaves the application (in TableStructureRecognizer.__desc_table).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `row_txt` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:23e06bf1833874c750565ff78fe7aa98331238d4ac99c9ea11abc4b28c5f69ee'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:23e06bf1833874c750565ff78fe7aa98331238d4ac99c9ea11abc4b28c5f69ee', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 493, 'function': 'TableStructureRecognizer.__desc_table'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 493, 'function': '__desc_table', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            row_txt = _gr_client.enforce(_gr_site, row_txt, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return row_txt
 
     @staticmethod
@@ -572,6 +716,18 @@ class TableStructureRecognizer(Recognizer):
                         del a["colspan"]
                 tbl[rowspan[0]][colspan[0]] = arr
 
+        # LINEAJE: runtime guardrail checks `tbl` as it flows from the agent to the user interface, before it leaves the application (in TableStructureRecognizer.__cal_spans).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `tbl` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ad8e7ef4a4693d69d642a6971a8cb6c5f600d685c3a784cdfe6c9c23c175d1bc'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ad8e7ef4a4693d69d642a6971a8cb6c5f600d685c3a784cdfe6c9c23c175d1bc', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 575, 'function': 'TableStructureRecognizer.__cal_spans'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 575, 'function': '__cal_spans', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            tbl = _gr_client.enforce(_gr_site, tbl, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return tbl
 
     def _run_ascend_tsr(self, image_list, thr=0.2, batch_size=16):
@@ -609,4 +765,16 @@ class TableStructureRecognizer(Recognizer):
                 output_list = session.infer(feeds=feeds, mode="static")
                 bb = self.postprocess(output_list, ins, conf_thr)
                 results.append(bb)
+        # LINEAJE: runtime guardrail checks `results` as it flows from the agent to the user interface, before it leaves the application (in TableStructureRecognizer._run_ascend_tsr).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `results` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8445a1b06987eedb212f6b1f559e3e95c73c48542727a3d45c5094f7070932f4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8445a1b06987eedb212f6b1f559e3e95c73c48542727a3d45c5094f7070932f4', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 612, 'function': 'TableStructureRecognizer._run_ascend_tsr'}, 'file': 'deepdoc/vision/table_structure_recognizer.py', 'line': 612, 'function': '_run_ascend_tsr', 'agent_name': 'TableStructureRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            results = _gr_client.enforce(_gr_site, results, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return results
