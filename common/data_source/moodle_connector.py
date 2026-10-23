@@ -1,4 +1,22 @@
 from __future__ import annotations
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import logging
 import os
@@ -39,9 +57,33 @@ class MoodleConnector(LoadConnector, PollConnector):
     def _add_token_to_url(self, file_url: str) -> str:
         """Append Moodle token to URL if missing"""
         if not self.moodle_client:
+            # LINEAJE: runtime guardrail checks `file_url` as it flows from the agent to the user interface, before it leaves the application (in MoodleConnector._add_token_to_url).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `file_url` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:785ccf3a69c124298c532d64f98ab92e2d5635a90c35cb6259c710863180358f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:785ccf3a69c124298c532d64f98ab92e2d5635a90c35cb6259c710863180358f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 42, 'function': 'MoodleConnector._add_token_to_url'}, 'file': 'common/data_source/moodle_connector.py', 'line': 42, 'function': '_add_token_to_url', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                file_url = _gr_client.enforce(_gr_site, file_url, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return file_url
         token = getattr(self.moodle_client, "token", "")
         if "token=" in file_url.lower():
+            # LINEAJE: runtime guardrail checks `file_url` as it flows from the agent to the user interface, before it leaves the application (in MoodleConnector._add_token_to_url).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `file_url` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:8d01a5a74fa8356d1b6c0d662462f9836237fd7838ff272677fcee987e35d5b0'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8d01a5a74fa8356d1b6c0d662462f9836237fd7838ff272677fcee987e35d5b0', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 45, 'function': 'MoodleConnector._add_token_to_url'}, 'file': 'common/data_source/moodle_connector.py', 'line': 45, 'function': '_add_token_to_url', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                file_url = _gr_client.enforce(_gr_site, file_url, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return file_url
         delimiter = "&" if "?" in file_url else "?"
         return f"{file_url}{delimiter}token={token}"
@@ -52,8 +94,32 @@ class MoodleConnector(LoadConnector, PollConnector):
         """Simplified logging wrapper"""
         msg = f"{context}: {error}"
         if level == "error":
+            # LINEAJE: runtime guardrail checks `msg` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector._log_error).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3c609b877a86038b2eabbaddec6d20ec4cb685b4dd078a7100816cb04990268e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3c609b877a86038b2eabbaddec6d20ec4cb685b4dd078a7100816cb04990268e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 55, 'function': 'MoodleConnector._log_error'}, 'file': 'common/data_source/moodle_connector.py', 'line': 55, 'function': '_log_error', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                msg = _gr_client.enforce(_gr_site, msg, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logger.error(msg)
         else:
+            # LINEAJE: runtime guardrail checks `msg` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector._log_error).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3bba82d7c8e56726d075c3c24b092402e82dccf8fe31141dce2619a8f8a7e3d3'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3bba82d7c8e56726d075c3c24b092402e82dccf8fe31141dce2619a8f8a7e3d3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 57, 'function': 'MoodleConnector._log_error'}, 'file': 'common/data_source/moodle_connector.py', 'line': 57, 'function': '_log_error', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                msg = _gr_client.enforce(_gr_site, msg, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logger.warning(msg)
 
     def _get_latest_timestamp(self, *timestamps: int) -> int:
@@ -111,10 +177,36 @@ class MoodleConnector(LoadConnector, PollConnector):
         if not self.moodle_client:
             raise ConnectorMissingCredentialError("Moodle client not initialized")
 
-        logger.info("Starting full load from Moodle workspace")
+        _lineaje_payload = "Starting full load from Moodle workspace"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector.load_from_state).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:14f9d4bd7e7d4c1d994163cf87239534136df1d721e1622816bf5e9cdb718b36'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:14f9d4bd7e7d4c1d994163cf87239534136df1d721e1622816bf5e9cdb718b36', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 114, 'function': 'MoodleConnector.load_from_state'}, 'file': 'common/data_source/moodle_connector.py', 'line': 114, 'function': 'load_from_state', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logger.info(_lineaje_payload)
         courses = self._get_enrolled_courses()
         if not courses:
-            logger.warning("No courses found to process")
+            _lineaje_payload = "No courses found to process"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector.load_from_state).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:89bb0391a0203d74b6d736263736e1540d8bdd17c7bb37704fb70e1adb187cf9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:89bb0391a0203d74b6d736263736e1540d8bdd17c7bb37704fb70e1adb187cf9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 117, 'function': 'MoodleConnector.load_from_state'}, 'file': 'common/data_source/moodle_connector.py', 'line': 117, 'function': 'load_from_state', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.warning(_lineaje_payload)
             return
 
         yield from self._yield_in_batches(self._process_courses(courses))
@@ -125,12 +217,38 @@ class MoodleConnector(LoadConnector, PollConnector):
         if not self.moodle_client:
             raise ConnectorMissingCredentialError("Moodle client not initialized")
 
+        _lineaje_payload = f"Polling Moodle updates between {datetime.fromtimestamp(start)} and {datetime.fromtimestamp(end)}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector.poll_source).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:540038d7a1dd5ffaf37b1db0e3d1a31db4b6abb191de7abffc774283c394b4d9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:540038d7a1dd5ffaf37b1db0e3d1a31db4b6abb191de7abffc774283c394b4d9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 128, 'function': 'MoodleConnector.poll_source'}, 'file': 'common/data_source/moodle_connector.py', 'line': 128, 'function': 'poll_source', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         logger.info(
-            f"Polling Moodle updates between {datetime.fromtimestamp(start)} and {datetime.fromtimestamp(end)}"
+            _lineaje_payload
         )
         courses = self._get_enrolled_courses()
         if not courses:
-            logger.warning("No courses found to poll")
+            _lineaje_payload = "No courses found to poll"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in MoodleConnector.poll_source).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:139f98f309c9254faa25488b155f144a3a7d6b53958aef586bb5cc8e5f55e8e8'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:139f98f309c9254faa25488b155f144a3a7d6b53958aef586bb5cc8e5f55e8e8', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/moodle_connector.py', 'line': 133, 'function': 'MoodleConnector.poll_source'}, 'file': 'common/data_source/moodle_connector.py', 'line': 133, 'function': 'poll_source', 'agent_name': 'MoodleConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.warning(_lineaje_payload)
             return
 
         yield from self._yield_in_batches(
