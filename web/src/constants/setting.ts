@@ -2,6 +2,7 @@ export const UserSettingBaseKey = 'user-setting';
 
 export enum UserSettingRouteKey {
   Profile = 'profile',
+  // LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
   Password = 'password',
   Model = 'model',
   System = 'system',
