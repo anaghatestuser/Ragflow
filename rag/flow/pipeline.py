@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -28,6 +46,16 @@ from rag.utils.redis_conn import REDIS_CONN
 class Pipeline(Graph):
     def __init__(self, dsl: str|dict, tenant_id=None, doc_id=None, task_id=None, flow_id=None):
         if isinstance(dsl, dict):
+            # LINEAJE: runtime guardrail checks `dsl` as it flows from the agent to an external endpoint, before it leaves the application (in Pipeline.__init__).
+            #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `dsl` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:877fefb868cfb8cc3bd1f1ca6cc353ef665f792935a3e14fcd42db9d9c8c9c0f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:877fefb868cfb8cc3bd1f1ca6cc353ef665f792935a3e14fcd42db9d9c8c9c0f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/pipeline.py', 'line': 31, 'function': 'Pipeline.__init__'}, 'file': 'rag/flow/pipeline.py', 'line': 31, 'function': '__init__', 'agent_name': 'Pipeline', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                dsl = _gr_client.enforce(_gr_site, dsl, content_type='application/json', variable_name='dsl', source_file=__file__, before_line=31)
+            except _gr_client.GuardrailUnavailableError:
+                pass
             dsl = json.dumps(dsl, ensure_ascii=False)
         super().__init__(dsl, tenant_id, task_id)
         if doc_id == CANVAS_DEBUG_DOC_ID:
@@ -98,6 +126,18 @@ class Pipeline(Graph):
             REDIS_CONN.set_obj(log_key, obj, 60 * 30)
 
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Pipeline.callback).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:d41bb7a4406875476139ddba293d39f0a6c2eadc2eb17c18608cef7052ec4f0e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d41bb7a4406875476139ddba293d39f0a6c2eadc2eb17c18608cef7052ec4f0e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/pipeline.py', 'line': 101, 'function': 'Pipeline.callback'}, 'file': 'rag/flow/pipeline.py', 'line': 101, 'function': 'callback', 'agent_name': 'Pipeline', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
 
         if has_canceled(self.task_id):
@@ -110,6 +150,18 @@ class Pipeline(Graph):
             if bin:
                 return json.loads(bin.encode("utf-8"))
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Pipeline.fetch_logs).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0a07d6a4eb448e865feb1eed699dfe4a658a6251025b619d9f08daeceff21a8e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0a07d6a4eb448e865feb1eed699dfe4a658a6251025b619d9f08daeceff21a8e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/pipeline.py', 'line': 113, 'function': 'Pipeline.fetch_logs'}, 'file': 'rag/flow/pipeline.py', 'line': 113, 'function': 'fetch_logs', 'agent_name': 'Pipeline', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
         return []
 
@@ -119,6 +171,18 @@ class Pipeline(Graph):
         try:
             REDIS_CONN.set_obj(log_key, [], 60 * 10)
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Pipeline.run).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:457dea64017a3c8ee1aae206bc6619cd4541e98441407d3398c44e1afc9bd704'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:457dea64017a3c8ee1aae206bc6619cd4541e98441407d3398c44e1afc9bd704', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/pipeline.py', 'line': 122, 'function': 'Pipeline.run'}, 'file': 'rag/flow/pipeline.py', 'line': 122, 'function': 'run', 'agent_name': 'Pipeline', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, e, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
         self.error = ""
         if not self.path:
@@ -163,7 +227,18 @@ class Pipeline(Graph):
             idx += 1
             self.path.extend(cpn_obj.get_downstream())
 
-        self.callback("END", 1 if not self.error else -1, json.dumps(self.get_component_obj(self.path[-1]).output(), ensure_ascii=False))
+        _lineaje_payload = self.get_component_obj(self.path[-1]).output()
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to an external endpoint, before it leaves the application (in Pipeline.run).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:be05cdfbf62e6bdfa73814a890f9ab86c7553d0bc7fdacf4956e27b5156b5767'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:be05cdfbf62e6bdfa73814a890f9ab86c7553d0bc7fdacf4956e27b5156b5767', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/pipeline.py', 'line': 166, 'function': 'Pipeline.run'}, 'file': 'rag/flow/pipeline.py', 'line': 166, 'function': 'run', 'agent_name': 'Pipeline', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=166))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        self.callback("END", 1 if not self.error else -1, json.dumps(_lineaje_payload, ensure_ascii=False))
 
         if not self.error:
             return self.get_component_obj(self.path[-1]).output()
