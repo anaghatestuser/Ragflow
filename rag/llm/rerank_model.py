@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -397,6 +415,16 @@ class HuggingfaceRerank(Base):
                 res = requests.post(
                     f"http://{url}/rerank", headers={"Content-Type": "application/json"}, json={"query": query, "texts": texts[i : i + batch_size], "raw_scores": False, "truncate": True}
                 )
+                # LINEAJE: runtime guardrail checks `res` as it flows from an external API to the agent, after the tool returns (in HuggingfaceRerank.post).
+                #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+                #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `res` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:cbfaad857c67e3ef60d60e47dfa1502ca99f01c1364044fcd5516f94dc7f2385'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cbfaad857c67e3ef60d60e47dfa1502ca99f01c1364044fcd5516f94dc7f2385', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/rerank_model.py', 'line': 397, 'function': 'HuggingfaceRerank.post'}, 'file': 'rag/llm/rerank_model.py', 'line': 397, 'function': 'post', 'agent_name': 'HuggingfaceRerank', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    res = _gr_client.enforce(_gr_site, res, content_type='application/json', variable_name='res', source_file=__file__, before_line=397)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
 
                 for o in res.json():
                     scores[o["index"] + i] = o["score"]
@@ -445,6 +473,16 @@ class GPUStackRerank(Base):
 
         try:
             response = requests.post(self.base_url, json=payload, headers=self.headers)
+            # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in GPUStackRerank.similarity).
+            #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:67ba77fec33f53794c10d8dcb11ffc89a958479866c40fbebd64b458d2491d18'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:67ba77fec33f53794c10d8dcb11ffc89a958479866c40fbebd64b458d2491d18', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/rerank_model.py', 'line': 447, 'function': 'GPUStackRerank.similarity'}, 'file': 'rag/llm/rerank_model.py', 'line': 447, 'function': 'similarity', 'agent_name': 'GPUStackRerank', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=447)
+            except _gr_client.GuardrailUnavailableError:
+                pass
             response.raise_for_status()
             response_json = response.json()
 
