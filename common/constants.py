@@ -199,6 +199,7 @@ class ForgettingPolicy(StrEnum):
 # ENV_RAGFLOW_MCP_HOST = "RAGFLOW_MCP_HOST"
 # ENV_RAGFLOW_MCP_PORT = "RAGFLOW_MCP_PORT"
 # ENV_RAGFLOW_MCP_LAUNCH_MODE = "RAGFLOW_MCP_LAUNCH_MODE"
+# LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
 # ENV_RAGFLOW_MCP_HOST_API_KEY = "RAGFLOW_MCP_HOST_API_KEY"
 # ENV_MINERU_EXECUTABLE = "MINERU_EXECUTABLE"
 # ENV_MINERU_APISERVER = "MINERU_APISERVER"
