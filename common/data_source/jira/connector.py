@@ -1,6 +1,24 @@
 """Checkpointed Jira connector that emits markdown blobs for each issue."""
 
 from __future__ import annotations
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import argparse
 import copy
@@ -135,7 +153,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
                 except ValueError as exc:
                     raise ConnectorValidationError(str(exc)) from exc
             else:
-                logger.warning("[Jira] Scoped token requested but Jira base URL does not appear to be an Atlassian Cloud domain; scoped token ignored.")
+                _lineaje_payload = "[Jira] Scoped token requested but Jira base URL does not appear to be an Atlassian Cloud domain; scoped token ignored."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector.load_credentials).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:66b6c6b5550c602ddf2fa0fb9f09d3f11a2c1c01eca466b00369fc124eb82157'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:66b6c6b5550c602ddf2fa0fb9f09d3f11a2c1c01eca466b00369fc124eb82157', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 138, 'function': 'JiraConnector.load_credentials'}, 'file': 'common/data_source/jira/connector.py', 'line': 138, 'function': 'load_credentials', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logger.warning(_lineaje_payload)
 
         user_email = credentials.get("jira_user_email") or credentials.get("username")
         api_token = credentials.get("jira_api_token") or credentials.get("token") or credentials.get("api_token")
@@ -213,7 +244,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         try:
             return (yield from self._load_with_retry(start, end, checkpoint))
         except Exception as exc:
-            logger.exception(f"[Jira] Jira query ultimately failed: {exc}")
+            _lineaje_payload = f"[Jira] Jira query ultimately failed: {exc}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector.load_from_checkpoint).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:1566a39624a583bb8a163121b7848636e594df78cd4a83881380a174bad68303'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1566a39624a583bb8a163121b7848636e594df78cd4a83881380a174bad68303', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 216, 'function': 'JiraConnector.load_from_checkpoint'}, 'file': 'common/data_source/jira/connector.py', 'line': 216, 'function': 'load_from_checkpoint', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.exception(_lineaje_payload)
             yield ConnectorFailure(
                 failure_message=f"Failed to query Jira: {exc}",
                 exception=exc,
@@ -245,14 +289,40 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         while True:
             attempt += 1
             jql = self._build_jql(attempt_start, end)
-            logger.info(f"[Jira] Executing Jira JQL attempt {attempt} (buffered_retry={retried_with_buffer})[start and end parameters redacted]")
+            _lineaje_payload = f"[Jira] Executing Jira JQL attempt {attempt} (buffered_retry={retried_with_buffer})[start and end parameters redacted]"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._load_with_retry).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:bfb3442ac00822fd944fcb39aa3004f19891276f1d839d65309d2c5ab7b14536'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bfb3442ac00822fd944fcb39aa3004f19891276f1d839d65309d2c5ab7b14536', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 248, 'function': 'JiraConnector._load_with_retry'}, 'file': 'common/data_source/jira/connector.py', 'line': 248, 'function': '_load_with_retry', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.info(_lineaje_payload)
             try:
                 return (yield from self._load_from_checkpoint_internal(jql, checkpoint, start_filter=start))
             except Exception as exc:
                 if attempt_start is not None and not retried_with_buffer and is_atlassian_date_error(exc):
                     attempt_start = attempt_start - ONE_HOUR
                     retried_with_buffer = True
-                    logger.info(f"[Jira] Atlassian date error detected; retrying with start={attempt_start}.")
+                    _lineaje_payload = f"[Jira] Atlassian date error detected; retrying with start={attempt_start}."
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._load_with_retry).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:5c2fe27a3d2cec02bc1c3370b59c1e338a3dceee05881c7c9738c39bdc925e83'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5c2fe27a3d2cec02bc1c3370b59c1e338a3dceee05881c7c9738c39bdc925e83', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 255, 'function': 'JiraConnector._load_with_retry'}, 'file': 'common/data_source/jira/connector.py', 'line': 255, 'function': '_load_with_retry', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logger.info(_lineaje_payload)
                     continue
                 raise
 
@@ -315,7 +385,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
             try:
                 document = self._issue_to_document(issue)
             except Exception as exc:  # pragma: no cover - defensive
-                logger.exception(f"[Jira] Failed to convert Jira issue {issue_key}: {exc}")
+                _lineaje_payload = f"[Jira] Failed to convert Jira issue {issue_key}: {exc}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._load_from_checkpoint_internal).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9ca6ff9158cb52c99159550167f0dabab706e4df3d05c24d4c229fb2f1fc4a76'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9ca6ff9158cb52c99159550167f0dabab706e4df3d05c24d4c229fb2f1fc4a76', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 318, 'function': 'JiraConnector._load_from_checkpoint_internal'}, 'file': 'common/data_source/jira/connector.py', 'line': 318, 'function': '_load_from_checkpoint_internal', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logger.exception(_lineaje_payload)
                 yield ConnectorFailure(
                     failure_message=f"Failed to convert Jira issue {issue_key}: {exc}",
                     failed_document=DocumentFailure(
@@ -340,6 +423,18 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
             page_size=page_size,
         )
         new_checkpoint.start_at = current_offset
+        # LINEAJE: runtime guardrail checks `new_checkpoint` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._load_from_checkpoint_internal).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `new_checkpoint` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ddca2b79f758ff933f0de0d5ef335ccf5d7025442219e1ca8a165595c8dbd0b9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ddca2b79f758ff933f0de0d5ef335ccf5d7025442219e1ca8a165595c8dbd0b9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 343, 'function': 'JiraConnector._load_from_checkpoint_internal'}, 'file': 'common/data_source/jira/connector.py', 'line': 343, 'function': '_load_from_checkpoint_internal', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            new_checkpoint = _gr_client.enforce(_gr_site, new_checkpoint, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return new_checkpoint
 
     def build_dummy_checkpoint(self) -> JiraCheckpoint:
@@ -435,6 +530,18 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         jql = " AND ".join(clauses)
         if "order by" not in jql.lower():
             jql = f"{jql} ORDER BY updated ASC"
+        # LINEAJE: runtime guardrail checks `jql` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._build_jql).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `jql` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:684079dab299d4cadcc7c7bccb6ade106673de9d8895081ee5e61a2ce8b04c08'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:684079dab299d4cadcc7c7bccb6ade106673de9d8895081ee5e61a2ce8b04c08', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 438, 'function': 'JiraConnector._build_jql'}, 'file': 'common/data_source/jira/connector.py', 'line': 438, 'function': '_build_jql', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            jql = _gr_client.enforce(_gr_site, jql, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return jql
 
     def _format_jql_time(self, timestamp: SecondsSinceUnixEpoch) -> str:
@@ -442,6 +549,18 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         dt_local = dt_utc.astimezone(self.timezone)
         # Jira only accepts minute-precision timestamps in JQL, so we format accordingly
         # and rely on a post-query second-level filter to avoid duplicates.
+        # LINEAJE: runtime guardrail checks `dt_local` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._format_jql_time).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dt_local` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:88795fa50de53f9f04c89a3e787617240c2d88ae03b2b4fdeff18423f514a236'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:88795fa50de53f9f04c89a3e787617240c2d88ae03b2b4fdeff18423f514a236', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 445, 'function': 'JiraConnector._format_jql_time'}, 'file': 'common/data_source/jira/connector.py', 'line': 445, 'function': '_format_jql_time', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dt_local = _gr_client.enforce(_gr_site, dt_local, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dt_local.strftime("%Y-%m-%d %H:%M")
 
     def _issue_to_document(self, issue: Issue) -> Document | None:
@@ -512,7 +631,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         blob = blob_text.encode("utf-8")
 
         if len(blob) > self.max_ticket_size:
-            logger.info(f"[Jira] Skipping {issue.key} because it exceeds the maximum size of {self.max_ticket_size} bytes.")
+            _lineaje_payload = f"[Jira] Skipping {issue.key} because it exceeds the maximum size of {self.max_ticket_size} bytes."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._issue_to_document).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:bb224e7bdbe88302c7c8168bdb2d049d00d2434b2e3423171073034d7bfd82ff'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bb224e7bdbe88302c7c8168bdb2d049d00d2434b2e3423171073034d7bfd82ff', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 515, 'function': 'JiraConnector._issue_to_document'}, 'file': 'common/data_source/jira/connector.py', 'line': 515, 'function': '_issue_to_document', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.info(_lineaje_payload)
             return None
 
         semantic_identifier = f"{issue.key}: {summary}" if summary else issue.key
@@ -537,7 +669,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
             except Exception as exc:  # pragma: no cover - defensive
                 failed_id = attachment.get("id") or attachment.get("filename")
                 issue_key = getattr(issue, "key", "unknown")
-                logger.warning(f"[Jira] Failed to process attachment {failed_id} for issue {issue_key}: {exc}")
+                _lineaje_payload = f"[Jira] Failed to process attachment {failed_id} for issue {issue_key}: {exc}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._attachment_documents).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:40d075e0d18aebfc2c9dc6d5215ac17915d1b61cd8538a955cfd08b90cfcadce'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:40d075e0d18aebfc2c9dc6d5215ac17915d1b61cd8538a955cfd08b90cfcadce', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 540, 'function': 'JiraConnector._attachment_documents'}, 'file': 'common/data_source/jira/connector.py', 'line': 540, 'function': '_attachment_documents', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logger.warning(_lineaje_payload)
 
     def _attachment_to_document(self, issue: Issue, attachment: dict[str, Any]) -> Document | None:
         if not self.include_attachments:
@@ -553,7 +698,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         except (TypeError, ValueError):
             attachment_size = 0
         if attachment_size and attachment_size > self.attachment_size_limit:
-            logger.info(f"[Jira] Skipping attachment {filename} on {issue.key} because reported size exceeds limit ({self.attachment_size_limit} bytes).")
+            _lineaje_payload = f"[Jira] Skipping attachment {filename} on {issue.key} because reported size exceeds limit ({self.attachment_size_limit} bytes)."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._attachment_to_document).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:55765c95dbca6c44818bee7319c1c8d2eee971e62c7d970eef1e483eefcf6b39'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:55765c95dbca6c44818bee7319c1c8d2eee971e62c7d970eef1e483eefcf6b39', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 556, 'function': 'JiraConnector._attachment_to_document'}, 'file': 'common/data_source/jira/connector.py', 'line': 556, 'function': '_attachment_to_document', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.info(_lineaje_payload)
             return None
 
         blob = self._download_attachment(content_url)
@@ -561,7 +719,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
             return None
 
         if len(blob) > self.attachment_size_limit:
-            logger.info(f"[Jira] Skipping attachment {filename} on {issue.key} because it exceeds the size limit ({self.attachment_size_limit} bytes).")
+            _lineaje_payload = f"[Jira] Skipping attachment {filename} on {issue.key} because it exceeds the size limit ({self.attachment_size_limit} bytes)."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._attachment_to_document).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:251fa0f44f5b6eb3c28a967face4984ab1541a98cc34278e10461b4633a3e7f4'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:251fa0f44f5b6eb3c28a967face4984ab1541a98cc34278e10461b4633a3e7f4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 564, 'function': 'JiraConnector._attachment_to_document'}, 'file': 'common/data_source/jira/connector.py', 'line': 564, 'function': '_attachment_to_document', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.info(_lineaje_payload)
             return None
 
         attachment_time = parse_jira_datetime(attachment.get("created")) or parse_jira_datetime(attachment.get("updated"))
@@ -594,7 +765,20 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         try:
             server_info = self.jira_client.server_info()
         except Exception as exc:  # pragma: no cover - defensive
-            logger.info(f"[Jira] Unable to determine timezone from server info; continuing with offset {self.timezone_offset}. Error: {exc}")
+            _lineaje_payload = f"[Jira] Unable to determine timezone from server info; continuing with offset {self.timezone_offset}. Error: {exc}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._sync_timezone_from_server).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:066ad6b6af113ada1083599e7ea40e8c4fc0e6ba06bf34697e42ee710ac81d4e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:066ad6b6af113ada1083599e7ea40e8c4fc0e6ba06bf34697e42ee710ac81d4e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 597, 'function': 'JiraConnector._sync_timezone_from_server'}, 'file': 'common/data_source/jira/connector.py', 'line': 597, 'function': '_sync_timezone_from_server', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logger.info(_lineaje_payload)
             return
 
         detected_offset = self._extract_timezone_offset(server_info)
@@ -603,19 +787,56 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
 
         self.timezone_offset = detected_offset
         self.timezone = timezone(offset=timedelta(hours=detected_offset))
-        logger.info(f"[Jira] Timezone offset adjusted to {detected_offset} hours using Jira server info.")
+        _lineaje_payload = f"[Jira] Timezone offset adjusted to {detected_offset} hours using Jira server info."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in JiraConnector._sync_timezone_from_server).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:08fb61efcedebd9b18e839ecccd02286816e8d58234798eb0251f654e68ec784'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:08fb61efcedebd9b18e839ecccd02286816e8d58234798eb0251f654e68ec784', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 606, 'function': 'JiraConnector._sync_timezone_from_server'}, 'file': 'common/data_source/jira/connector.py', 'line': 606, 'function': '_sync_timezone_from_server', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logger.info(_lineaje_payload)
 
     def _extract_timezone_offset(self, server_info: dict[str, Any]) -> float | None:
         server_time_raw = server_info.get("serverTime")
         if isinstance(server_time_raw, str):
             offset = self._parse_offset_from_datetime_string(server_time_raw)
             if offset is not None:
+                # LINEAJE: runtime guardrail checks `offset` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._extract_timezone_offset).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `offset` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:c56d9da3b897b924f591c652bfa69d3441bab230a7e60129e6d34f4172795159'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c56d9da3b897b924f591c652bfa69d3441bab230a7e60129e6d34f4172795159', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 613, 'function': 'JiraConnector._extract_timezone_offset'}, 'file': 'common/data_source/jira/connector.py', 'line': 613, 'function': '_extract_timezone_offset', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    offset = _gr_client.enforce(_gr_site, offset, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return offset
 
         tz_name = server_info.get("timeZone")
         if isinstance(tz_name, str):
             offset = self._offset_from_zone_name(tz_name)
             if offset is not None:
+                # LINEAJE: runtime guardrail checks `offset` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._extract_timezone_offset).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `offset` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:cb4a43aa507241e880c217ec2085ef3c4754b77b5b28a360360737895ffae1d3'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cb4a43aa507241e880c217ec2085ef3c4754b77b5b28a360360737895ffae1d3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 619, 'function': 'JiraConnector._extract_timezone_offset'}, 'file': 'common/data_source/jira/connector.py', 'line': 619, 'function': '_extract_timezone_offset', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    offset = _gr_client.enforce(_gr_site, offset, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return offset
         return None
 
@@ -645,6 +866,18 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
         if match and match.group(3) != ":":
             sign, hours, _, minutes = match.groups()
             trimmed = f"{trimmed[: match.start()]}{sign}{hours}:{minutes}"
+        # LINEAJE: runtime guardrail checks `trimmed` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._normalize_datetime_string).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `trimmed` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:066b706539386e53191fd22d23432e39ab0f8b1915e8cc3f3ca67fca9570954b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:066b706539386e53191fd22d23432e39ab0f8b1915e8cc3f3ca67fca9570954b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 648, 'function': 'JiraConnector._normalize_datetime_string'}, 'file': 'common/data_source/jira/connector.py', 'line': 648, 'function': '_normalize_datetime_string', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            trimmed = _gr_client.enforce(_gr_site, trimmed, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return trimmed
 
     @staticmethod
@@ -804,6 +1037,18 @@ class JiraConnector(CheckpointedConnectorWithPermSync, SlimConnectorWithPermSync
             checkpoint.cursor = page_token
             checkpoint.ids_done = page_token is None
 
+        # LINEAJE: runtime guardrail checks `checkpoint_callback` as it flows from the agent to the user interface, before it leaves the application (in JiraConnector._make_checkpoint_callback).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `checkpoint_callback` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2212a8d083694c1b5c5d5c932d96c548ce55e6e392ef6c42ece52ad0ccec16c9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2212a8d083694c1b5c5d5c932d96c548ce55e6e392ef6c42ece52ad0ccec16c9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 807, 'function': 'JiraConnector._make_checkpoint_callback'}, 'file': 'common/data_source/jira/connector.py', 'line': 807, 'function': '_make_checkpoint_callback', 'agent_name': 'JiraConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            checkpoint_callback = _gr_client.enforce(_gr_site, checkpoint_callback, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return checkpoint_callback
 
     def _update_checkpoint_for_next_run(
@@ -881,9 +1126,47 @@ def test_jira(
     end = end_ts if end_ts is not None else now_ts
 
     documents = list(iterate_jira_documents(connector, start=start, end=end))
-    logger.info(f"[Jira] Fetched {len(documents)} Jira documents.")
+    _lineaje_payload = f"[Jira] Fetched {len(documents)} Jira documents."
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in test_jira).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:9d406fb8478c6d1331e63aa25406942cb31bb014275f60704a5eccc3ea46a86c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9d406fb8478c6d1331e63aa25406942cb31bb014275f60704a5eccc3ea46a86c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 884, 'function': 'test_jira'}, 'file': 'common/data_source/jira/connector.py', 'line': 884, 'function': 'test_jira', 'agent_name': 'test_jira', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logger.info(_lineaje_payload)
     for doc in documents[:5]:
-        logger.info(f"[Jira] Document {doc.semantic_identifier} ({doc.id}) size={doc.size_bytes} bytes")
+        _lineaje_payload = f"[Jira] Document {doc.semantic_identifier} ({doc.id}) size={doc.size_bytes} bytes"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in test_jira).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:67a7bb9e5d849a562aa8ebeb7b35695d706ad381fa8e9cbabdec82880bf7ca57'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:67a7bb9e5d849a562aa8ebeb7b35695d706ad381fa8e9cbabdec82880bf7ca57', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 886, 'function': 'test_jira'}, 'file': 'common/data_source/jira/connector.py', 'line': 886, 'function': 'test_jira', 'agent_name': 'test_jira', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logger.info(_lineaje_payload)
+    # LINEAJE: runtime guardrail checks `documents` as it flows from the agent to the user interface, before it leaves the application (in test_jira).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `documents` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:58114d754086238196333d972c7de2cc2387ea94c7d2da42406aebdd75c0af79'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:58114d754086238196333d972c7de2cc2387ea94c7d2da42406aebdd75c0af79', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 887, 'function': 'test_jira'}, 'file': 'common/data_source/jira/connector.py', 'line': 887, 'function': 'test_jira', 'agent_name': 'test_jira', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        documents = _gr_client.enforce(_gr_site, documents, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return documents
 
 
@@ -901,6 +1184,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attachment_size_limit", dest="attachment_size_limit", type=float, default=_DEFAULT_ATTACHMENT_SIZE_LIMIT)
     parser.add_argument("--start-ts", dest="start_ts", type=float, default=None, help="Epoch seconds inclusive lower bound for updated issues.")
     parser.add_argument("--end-ts", dest="end_ts", type=float, default=9999999999, help="Epoch seconds inclusive upper bound for updated issues.")
+    # LINEAJE: runtime guardrail checks `parser` as it flows from the agent to the user interface, before it leaves the application (in _build_arg_parser).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `parser` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:9c3394af0f5e7470f2b67e5a7042b299e1891cec131199a6b3bd91aaba19e0d4'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9c3394af0f5e7470f2b67e5a7042b299e1891cec131199a6b3bd91aaba19e0d4', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 904, 'function': '_build_arg_parser'}, 'file': 'common/data_source/jira/connector.py', 'line': 904, 'function': '_build_arg_parser', 'agent_name': '_build_arg_parser', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        parser = _gr_client.enforce(_gr_site, parser, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return parser
 
 
@@ -960,9 +1255,35 @@ def main(config: dict[str, Any] | None = None) -> None:
     preview_count = min(len(documents), 5)
     for idx in range(preview_count):
         doc = documents[idx]
-        print(f"[Jira] [Sample {idx + 1}] {doc.semantic_identifier} | id={doc.id} | size={doc.size_bytes} bytes")
+        _lineaje_payload = f"[Jira] [Sample {idx + 1}] {doc.semantic_identifier} | id={doc.id} | size={doc.size_bytes} bytes"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:27325e2bbbd07ed7aa078f38da452950a3649d99c29afadb797f2e6c839dd468'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:27325e2bbbd07ed7aa078f38da452950a3649d99c29afadb797f2e6c839dd468', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 963, 'function': 'main'}, 'file': 'common/data_source/jira/connector.py', 'line': 963, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        print(_lineaje_payload)
 
-    print(f"[Jira] Jira connector test completed. Documents fetched: {len(documents)}")
+    _lineaje_payload = f"[Jira] Jira connector test completed. Documents fetched: {len(documents)}"
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in main).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:9496e819c74e7b34177a3fea910b34fc26c6ee091875a325dc71b363c40b3358'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9496e819c74e7b34177a3fea910b34fc26c6ee091875a325dc71b363c40b3358', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/jira/connector.py', 'line': 965, 'function': 'main'}, 'file': 'common/data_source/jira/connector.py', 'line': 965, 'function': 'main', 'agent_name': 'main', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    print(_lineaje_payload)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution path
