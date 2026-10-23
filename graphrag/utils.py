@@ -5,6 +5,24 @@ Reference:
  - [graphrag](https://github.com/microsoft/graphrag)
  - [LightRag](https://github.com/HKUDS/LightRAG)
 """
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import asyncio
 import dataclasses
@@ -57,6 +75,18 @@ def perform_variable_replacements(input: str, history: list[dict] | None = None,
         result = input
         for k, v in variables.items():
             result = result.replace(f"{{{k}}}", str(v))
+        # LINEAJE: runtime guardrail checks `result` as it flows from the agent to the user interface, before it leaves the application (in GraphChange.replace_all).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `result` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:5f8eb1e5529fad36588b3d352840616b2d752676ea9f89f4b0b58a6defc0ab7e'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5f8eb1e5529fad36588b3d352840616b2d752676ea9f89f4b0b58a6defc0ab7e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 60, 'function': 'perform_variable_replacements.replace_all'}, 'file': 'graphrag/utils.py', 'line': 60, 'function': 'replace_all', 'agent_name': 'GraphChange', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            result = _gr_client.enforce(_gr_site, result, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return result
 
     result = replace_all(result)
@@ -64,6 +94,18 @@ def perform_variable_replacements(input: str, history: list[dict] | None = None,
         if entry.get("role") == "system":
             entry["content"] = replace_all(entry.get("content") or "")
 
+    # LINEAJE: runtime guardrail checks `result` as it flows from the agent to the user interface, before it leaves the application (in perform_variable_replacements).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `result` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:8d1dfdae662391258030d0cf4189ca4677090c37644e8c07dbe71013559b03e9'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8d1dfdae662391258030d0cf4189ca4677090c37644e8c07dbe71013559b03e9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 67, 'function': 'perform_variable_replacements'}, 'file': 'graphrag/utils.py', 'line': 67, 'function': 'perform_variable_replacements', 'agent_name': 'perform_variable_replacements', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        result = _gr_client.enforce(_gr_site, result, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return result
 
 
@@ -71,6 +113,18 @@ def clean_str(input: Any) -> str:
     """Clean an input string by removing HTML escapes, control characters, and other unwanted characters."""
     # If we get non-string input, just give it back
     if not isinstance(input, str):
+        # LINEAJE: runtime guardrail checks `input` as it flows from the agent to the user interface, before it leaves the application (in clean_str).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a8c19942b4c23f0e44b11ecb0a6449a5413c4b1b54c09c80c8eb3eda08323c91'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a8c19942b4c23f0e44b11ecb0a6449a5413c4b1b54c09c80c8eb3eda08323c91', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 74, 'function': 'clean_str'}, 'file': 'graphrag/utils.py', 'line': 74, 'function': 'clean_str', 'agent_name': 'clean_str', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            input = _gr_client.enforce(_gr_site, input, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return input
 
     result = html.unescape(input.strip())
@@ -98,6 +152,18 @@ def get_llm_cache(llmnm, txt, history, genconf):
     bin = REDIS_CONN.get(k)
     if not bin:
         return None
+    # LINEAJE: runtime guardrail checks `bin` as it flows from the agent to the user interface, before it leaves the application (in get_llm_cache).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `bin` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:e2fc065fc46312dd09c3d95ba323de870e43adccf6d8d4c74b215d44d8a81704'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e2fc065fc46312dd09c3d95ba323de870e43adccf6d8d4c74b215d44d8a81704', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 101, 'function': 'get_llm_cache'}, 'file': 'graphrag/utils.py', 'line': 101, 'function': 'get_llm_cache', 'agent_name': 'get_llm_cache', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        bin = _gr_client.enforce(_gr_site, bin, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return bin
 
 
@@ -138,6 +204,18 @@ def get_tags_from_cache(kb_ids):
     bin = REDIS_CONN.get(k)
     if not bin:
         return
+    # LINEAJE: runtime guardrail checks `bin` as it flows from the agent to the user interface, before it leaves the application (in get_tags_from_cache).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `bin` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:4c52efe572e971f949e442565312678fd863898d02bbbed4f7ee231407233392'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4c52efe572e971f949e442565312678fd863898d02bbbed4f7ee231407233392', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 141, 'function': 'get_tags_from_cache'}, 'file': 'graphrag/utils.py', 'line': 141, 'function': 'get_tags_from_cache', 'agent_name': 'get_tags_from_cache', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        bin = _gr_client.enforce(_gr_site, bin, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return bin
 
 
@@ -146,6 +224,16 @@ def set_tags_to_cache(kb_ids, tags):
     hasher.update(str(kb_ids).encode("utf-8"))
 
     k = hasher.hexdigest()
+    # LINEAJE: runtime guardrail checks `tags` as it flows from the agent to an external endpoint, before it leaves the application (in set_tags_to_cache).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `tags` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:506fbc023b92d8d0a7f715c38ee5367a9b6c853d7a1c63d721fd1a2eafe6bcb8'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:506fbc023b92d8d0a7f715c38ee5367a9b6c853d7a1c63d721fd1a2eafe6bcb8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 149, 'function': 'set_tags_to_cache'}, 'file': 'graphrag/utils.py', 'line': 149, 'function': 'set_tags_to_cache', 'agent_name': 'set_tags_to_cache', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        tags = _gr_client.enforce(_gr_site, tags, content_type='application/json', variable_name='tags', source_file=__file__, before_line=149)
+    except _gr_client.GuardrailUnavailableError:
+        pass
     REDIS_CONN.set(k, json.dumps(tags).encode("utf-8"), 600)
 
 
@@ -160,6 +248,18 @@ def tidy_graph(graph: nx.Graph, callback, check_attribute: bool = True):
             if attr not in node_attrs:
                 valid_node = False
                 break
+        # LINEAJE: runtime guardrail checks `valid_node` as it flows from the agent to the user interface, before it leaves the application (in GraphChange.is_valid_item).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `valid_node` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9480c6633e98d25333a0334a273f43de936b3d78fe0f4fe5b61cdfd9eb3062c0'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9480c6633e98d25333a0334a273f43de936b3d78fe0f4fe5b61cdfd9eb3062c0', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 163, 'function': 'tidy_graph.is_valid_item'}, 'file': 'graphrag/utils.py', 'line': 163, 'function': 'is_valid_item', 'agent_name': 'GraphChange', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            valid_node = _gr_client.enforce(_gr_site, valid_node, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return valid_node
 
     if check_attribute:
@@ -222,6 +322,18 @@ def graph_merge(g1: nx.Graph, g2: nx.Graph, change: GraphChange):
     if "source_id" not in g1.graph:
         g1.graph["source_id"] = []
     g1.graph["source_id"] += g2.graph.get("source_id", [])
+    # LINEAJE: runtime guardrail checks `g1` as it flows from the agent to the user interface, before it leaves the application (in graph_merge).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `g1` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:1fc94bfbbda12cce06fb8e740cdfd8e479512099d9b7f7b73f7be846dc608bbd'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1fc94bfbbda12cce06fb8e740cdfd8e479512099d9b7f7b73f7be846dc608bbd', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 225, 'function': 'graph_merge'}, 'file': 'graphrag/utils.py', 'line': 225, 'function': 'graph_merge', 'agent_name': 'graph_merge', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        g1 = _gr_client.enforce(_gr_site, g1, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return g1
 
 
@@ -295,8 +407,28 @@ def chunk_id(chunk):
 
 
 async def graph_node_to_chunk(kb_id, embd_mdl, ent_name, meta, chunks):
+    # LINEAJE: runtime guardrail checks `meta` as it flows from the agent to an external endpoint, before it leaves the application (in graph_node_to_chunk).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `meta` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:034eddf8339ab0bdc654506ad4c3181880ff73b34754bfa575740b2c7e9faa97'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:034eddf8339ab0bdc654506ad4c3181880ff73b34754bfa575740b2c7e9faa97', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 298, 'function': 'graph_node_to_chunk'}, 'file': 'graphrag/utils.py', 'line': 298, 'function': 'graph_node_to_chunk', 'agent_name': 'graph_node_to_chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        meta = _gr_client.enforce(_gr_site, meta, content_type='application/json', variable_name='meta', source_file=__file__, before_line=298)
+    except _gr_client.GuardrailUnavailableError:
+        pass
     global chat_limiter
     enable_timeout_assertion = os.environ.get("ENABLE_TIMEOUT_ASSERTION")
+    # LINEAJE: runtime guardrail checks `meta` as it flows from the agent to an external endpoint, before it leaves the application (in graph_node_to_chunk).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `meta` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:9b073c269b8dacf69d31a483990880621578a585bfaa6db9138c4550d9b9250f'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b073c269b8dacf69d31a483990880621578a585bfaa6db9138c4550d9b9250f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 300, 'function': 'graph_node_to_chunk'}, 'file': 'graphrag/utils.py', 'line': 300, 'function': 'graph_node_to_chunk', 'agent_name': 'graph_node_to_chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        meta = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, meta, content_type='application/json', variable_name='meta', source_file=__file__, before_line=300))
+    except _gr_client.GuardrailUnavailableError:
+        pass
     chunk = {
         "id": get_uuid(),
         "important_kwd": [ent_name],
@@ -338,6 +470,16 @@ def get_relation(tenant_id, kb_id, from_ent_name, to_ent_name, size=1):
     conds = {"fields": ["content_with_weight"], "size": size, "from_entity_kwd": ents, "to_entity_kwd": ents, "knowledge_graph_kwd": ["relation"]}
     res = []
     es_res = settings.retriever.search(conds, search.index_name(tenant_id), [kb_id] if isinstance(kb_id, str) else kb_id)
+    # LINEAJE: runtime guardrail checks `es_res` as it flows from a vector store to the agent, after the tool returns (in get_relation).
+    #   Detected: this statement moves data from a vector store to the agent with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `es_res` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:e45957c50dbca524653c9aaa31930fe08d56e10ca5d2cbc52700aa937d230213'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e45957c50dbca524653c9aaa31930fe08d56e10ca5d2cbc52700aa937d230213', phase='post_tool', boundary={'source': 'vector_store', 'sink': 'agent_context'}, fail_mode='ALLOW_WITH_AUDIT', source_type='vector_store', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 340, 'function': 'get_relation'}, 'file': 'graphrag/utils.py', 'line': 340, 'function': 'get_relation', 'agent_name': 'get_relation', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        es_res = _gr_client.enforce(_gr_site, es_res, content_type='application/json', variable_name='es_res', source_file=__file__, before_line=340)
+    except _gr_client.GuardrailUnavailableError:
+        pass
     for id in es_res.ids:
         try:
             if size == 1:
@@ -345,11 +487,43 @@ def get_relation(tenant_id, kb_id, from_ent_name, to_ent_name, size=1):
             res.append(json.loads(es_res.field[id]["content_with_weight"]))
         except Exception:
             continue
+    # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in get_relation).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:679e3edce818e88ccedfe4b412590f09fb2fec1884d4f5201c6e0bc12f716f83'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:679e3edce818e88ccedfe4b412590f09fb2fec1884d4f5201c6e0bc12f716f83', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 348, 'function': 'get_relation'}, 'file': 'graphrag/utils.py', 'line': 348, 'function': 'get_relation', 'agent_name': 'get_relation', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return res
 
 
 async def graph_edge_to_chunk(kb_id, embd_mdl, from_ent_name, to_ent_name, meta, chunks):
+    # LINEAJE: runtime guardrail checks `meta` as it flows from the agent to an external endpoint, before it leaves the application (in graph_edge_to_chunk).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `meta` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:4a0ccd221abb447bdde0cdcde4d777b005e7c2118b696b54250aaa22ae026f49'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4a0ccd221abb447bdde0cdcde4d777b005e7c2118b696b54250aaa22ae026f49', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 352, 'function': 'graph_edge_to_chunk'}, 'file': 'graphrag/utils.py', 'line': 352, 'function': 'graph_edge_to_chunk', 'agent_name': 'graph_edge_to_chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        meta = _gr_client.enforce(_gr_site, meta, content_type='application/json', variable_name='meta', source_file=__file__, before_line=352)
+    except _gr_client.GuardrailUnavailableError:
+        pass
     enable_timeout_assertion = os.environ.get("ENABLE_TIMEOUT_ASSERTION")
+    # LINEAJE: runtime guardrail checks `meta` as it flows from the agent to an external endpoint, before it leaves the application (in graph_edge_to_chunk).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `meta` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:cee74137bd2c90aca4a7e2700c9e931ff01819b292b1d198e1f52a5c01e11f7c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cee74137bd2c90aca4a7e2700c9e931ff01819b292b1d198e1f52a5c01e11f7c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 353, 'function': 'graph_edge_to_chunk'}, 'file': 'graphrag/utils.py', 'line': 353, 'function': 'graph_edge_to_chunk', 'agent_name': 'graph_edge_to_chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        meta = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, meta, content_type='application/json', variable_name='meta', source_file=__file__, before_line=353))
+    except _gr_client.GuardrailUnavailableError:
+        pass
     chunk = {
         "id": get_uuid(),
         "from_entity_kwd": from_ent_name,
@@ -412,9 +586,33 @@ async def get_graph_doc_ids(tenant_id, kb_id) -> list[str]:
     )
     doc_ids = []
     if res.total == 0:
+        # LINEAJE: runtime guardrail checks `doc_ids` as it flows from the agent to the user interface, before it leaves the application (in get_graph_doc_ids).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `doc_ids` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:41108d4d68543bace81014f3bc97f162d6f4d8e3ef3693087192a28cb93b246d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:41108d4d68543bace81014f3bc97f162d6f4d8e3ef3693087192a28cb93b246d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 415, 'function': 'get_graph_doc_ids'}, 'file': 'graphrag/utils.py', 'line': 415, 'function': 'get_graph_doc_ids', 'agent_name': 'get_graph_doc_ids', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            doc_ids = _gr_client.enforce(_gr_site, doc_ids, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return doc_ids
     for id in res.ids:
         doc_ids = res.field[id]["source_id"]
+    # LINEAJE: runtime guardrail checks `doc_ids` as it flows from the agent to the user interface, before it leaves the application (in get_graph_doc_ids).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `doc_ids` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:bc94ca6169418cf0777afaf7a5f0340d53be8bd1b10599e27551241f26bf174c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bc94ca6169418cf0777afaf7a5f0340d53be8bd1b10599e27551241f26bf174c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 418, 'function': 'get_graph_doc_ids'}, 'file': 'graphrag/utils.py', 'line': 418, 'function': 'get_graph_doc_ids', 'agent_name': 'get_graph_doc_ids', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        doc_ids = _gr_client.enforce(_gr_site, doc_ids, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return doc_ids
 
 
@@ -435,14 +633,48 @@ async def get_graph(tenant_id, kb_id, exclude_rebuild=None):
                         g.graph["source_id"] = res.field[id]["source_id"]
                 else:
                     g = await rebuild_graph(tenant_id, kb_id, exclude_rebuild)
+                # LINEAJE: runtime guardrail checks `g` as it flows from the agent to the user interface, before it leaves the application (in get_graph).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `g` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:039cbc5d5ff3a95090b9d0bd1b7ce28e103c5d3f52c346a83a494a350d60cf34'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:039cbc5d5ff3a95090b9d0bd1b7ce28e103c5d3f52c346a83a494a350d60cf34', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 438, 'function': 'get_graph'}, 'file': 'graphrag/utils.py', 'line': 438, 'function': 'get_graph', 'agent_name': 'get_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    g = _gr_client.enforce(_gr_site, g, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return g
             except Exception:
                 continue
     result = None
+    # LINEAJE: runtime guardrail checks `result` as it flows from the agent to the user interface, before it leaves the application (in get_graph).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `result` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:309cab8f95993f147ff381e46dac9537766a75f717bd960b568f4bdeb1f45260'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:309cab8f95993f147ff381e46dac9537766a75f717bd960b568f4bdeb1f45260', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 442, 'function': 'get_graph'}, 'file': 'graphrag/utils.py', 'line': 442, 'function': 'get_graph', 'agent_name': 'get_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        result = _gr_client.enforce(_gr_site, result, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return result
 
 
 async def set_graph(tenant_id: str, kb_id: str, embd_mdl, graph: nx.Graph, change: GraphChange, callback):
+    # LINEAJE: runtime guardrail checks `graph` as it flows from the agent to an external endpoint, before it leaves the application (in set_graph).
+    #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `graph` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:1fd82eaeea8f185bcce92a88e2bfff25516d5a9b96ed13c23e4f888caeab74ec'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1fd82eaeea8f185bcce92a88e2bfff25516d5a9b96ed13c23e4f888caeab74ec', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 446, 'function': 'set_graph'}, 'file': 'graphrag/utils.py', 'line': 446, 'function': 'set_graph', 'agent_name': 'set_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        graph = _gr_client.enforce(_gr_site, graph, content_type='application/json', variable_name='graph', source_file=__file__, before_line=446)
+    except _gr_client.GuardrailUnavailableError:
+        pass
     global chat_limiter
     start = asyncio.get_running_loop().time()
 
@@ -479,7 +711,20 @@ async def set_graph(tenant_id: str, kb_id: str, embd_mdl, graph: nx.Graph, chang
         try:
             await asyncio.gather(*tasks, return_exceptions=False)
         except Exception as e:
-            logging.error(f"Error while deleting edges: {e}")
+            _lineaje_payload = f"Error while deleting edges: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in GraphChange.del_edges).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:dd5a2d42d6d35ecd30606e956e73ca82e66959aafac7cc0253dcb01f8fcda81f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:dd5a2d42d6d35ecd30606e956e73ca82e66959aafac7cc0253dcb01f8fcda81f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 482, 'function': 'set_graph'}, 'file': 'graphrag/utils.py', 'line': 482, 'function': 'del_edges', 'agent_name': 'GraphChange', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -531,7 +776,20 @@ async def set_graph(tenant_id: str, kb_id: str, embd_mdl, graph: nx.Graph, chang
     try:
         await asyncio.gather(*tasks, return_exceptions=False)
     except Exception as e:
-        logging.error(f"Error in get_embedding_of_nodes: {e}")
+        _lineaje_payload = f"Error in get_embedding_of_nodes: {e}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in set_graph).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2e51640ea6f40b897a365996cc8d305693cc854750de6595cd187e08ca96936b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2e51640ea6f40b897a365996cc8d305693cc854750de6595cd187e08ca96936b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 534, 'function': 'set_graph'}, 'file': 'graphrag/utils.py', 'line': 534, 'function': 'set_graph', 'agent_name': 'set_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.error(_lineaje_payload)
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -550,7 +808,20 @@ async def set_graph(tenant_id: str, kb_id: str, embd_mdl, graph: nx.Graph, chang
     try:
         await asyncio.gather(*tasks, return_exceptions=False)
     except Exception as e:
-        logging.error(f"Error in get_embedding_of_edges: {e}")
+        _lineaje_payload = f"Error in get_embedding_of_edges: {e}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in set_graph).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:778459ad0dd83110871f616ee273fd5a7323d790b6a4aba923f502f71020cab9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:778459ad0dd83110871f616ee273fd5a7323d790b6a4aba923f502f71020cab9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 553, 'function': 'set_graph'}, 'file': 'graphrag/utils.py', 'line': 553, 'function': 'set_graph', 'agent_name': 'set_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.error(_lineaje_payload)
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -595,6 +866,18 @@ def is_continuous_subsequence(subseq, seq):
                 start = index + 1
             except ValueError:
                 break
+        # LINEAJE: runtime guardrail checks `indexes` as it flows from the agent to the user interface, before it leaves the application (in GraphChange.find_all_indexes).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `indexes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1c3e3435df8ac05a9e55233abd3d32bc20a91cd510ba53f6a5aa3c6a8c52925d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1c3e3435df8ac05a9e55233abd3d32bc20a91cd510ba53f6a5aa3c6a8c52925d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 598, 'function': 'is_continuous_subsequence.find_all_indexes'}, 'file': 'graphrag/utils.py', 'line': 598, 'function': 'find_all_indexes', 'agent_name': 'GraphChange', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            indexes = _gr_client.enforce(_gr_site, indexes, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return indexes
 
     index_list = find_all_indexes(seq, subseq[0])
@@ -623,24 +906,80 @@ def merge_tuples(list1, list2):
                 result.append(merged_tuple)
             if not already_match_flag:
                 result.append(tup)
+    # LINEAJE: runtime guardrail checks `result` as it flows from the agent to the user interface, before it leaves the application (in merge_tuples).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `result` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:0ab316cbe1fb8dc9084f5675f9e71da6bcfaa0e6c1638585b625216be778bb8b'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0ab316cbe1fb8dc9084f5675f9e71da6bcfaa0e6c1638585b625216be778bb8b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 626, 'function': 'merge_tuples'}, 'file': 'graphrag/utils.py', 'line': 626, 'function': 'merge_tuples', 'agent_name': 'merge_tuples', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        result = _gr_client.enforce(_gr_site, result, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return result
 
 
 def get_entity_type2samples(idxnms, kb_ids: list):
     es_res = settings.retriever.search({"knowledge_graph_kwd": "ty2ents", "kb_id": kb_ids, "size": 10000, "fields": ["content_with_weight"]},idxnms,kb_ids)
+    # LINEAJE: runtime guardrail checks `es_res` as it flows from a vector store to the agent, after the tool returns (in get_entity_type2samples).
+    #   Detected: this statement moves data from a vector store to the agent with no runtime policy check (detection confidence: medium).
+    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `es_res` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:73f9b0b9acaf1f80ca99ab3554e70f3f1bc95d4a104ca02306111930d55d4b42'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:73f9b0b9acaf1f80ca99ab3554e70f3f1bc95d4a104ca02306111930d55d4b42', phase='post_tool', boundary={'source': 'vector_store', 'sink': 'agent_context'}, fail_mode='ALLOW_WITH_AUDIT', source_type='vector_store', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 630, 'function': 'get_entity_type2samples'}, 'file': 'graphrag/utils.py', 'line': 630, 'function': 'get_entity_type2samples', 'agent_name': 'get_entity_type2samples', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        es_res = _gr_client.enforce(_gr_site, es_res, content_type='application/json', variable_name='es_res', source_file=__file__, before_line=630)
+    except _gr_client.GuardrailUnavailableError:
+        pass
 
     res = defaultdict(list)
     for id in es_res.ids:
         smp = es_res.field[id].get("content_with_weight")
+        # LINEAJE: runtime guardrail checks `smp` as it flows from an external API to the agent, after the tool returns (in get_entity_type2samples).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `smp` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c2678856089f6fd3fbf88299859f5ea101ce2852f84d5548999d4ed03d2692c3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c2678856089f6fd3fbf88299859f5ea101ce2852f84d5548999d4ed03d2692c3', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 634, 'function': 'get_entity_type2samples'}, 'file': 'graphrag/utils.py', 'line': 634, 'function': 'get_entity_type2samples', 'agent_name': 'get_entity_type2samples', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            smp = _gr_client.enforce(_gr_site, smp, content_type='application/json', variable_name='smp', source_file=__file__, before_line=634)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         if not smp:
             continue
         try:
             smp = json.loads(smp)
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in get_entity_type2samples).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:ec5170f0815a8a16382eed011c503ed52bd05a1e61bee18fec772d41e9b08392'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ec5170f0815a8a16382eed011c503ed52bd05a1e61bee18fec772d41e9b08392', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 640, 'function': 'get_entity_type2samples'}, 'file': 'graphrag/utils.py', 'line': 640, 'function': 'get_entity_type2samples', 'agent_name': 'get_entity_type2samples', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
 
         for ty, ents in smp.items():
             res[ty].extend(ents)
+    # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in get_entity_type2samples).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:962f5c74cf605afef87bfbb702a68184d13bcaab27e2967e56f7af74a65f3aea'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:962f5c74cf605afef87bfbb702a68184d13bcaab27e2967e56f7af74a65f3aea', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 644, 'function': 'get_entity_type2samples'}, 'file': 'graphrag/utils.py', 'line': 644, 'function': 'get_entity_type2samples', 'agent_name': 'get_entity_type2samples', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return res
 
 
@@ -692,4 +1031,16 @@ async def rebuild_graph(tenant_id, kb_id, exclude_rebuild=None):
     if len(graph.nodes) == 0:
         return None
     graph.graph["source_id"] = sorted(graph.graph["source_id"])
+    # LINEAJE: runtime guardrail checks `graph` as it flows from the agent to the user interface, before it leaves the application (in rebuild_graph).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `graph` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:52b61c0183fe212ebcf87c6c003bd8334daea6da26593f5da4deb6a0ef1193ad'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:52b61c0183fe212ebcf87c6c003bd8334daea6da26593f5da4deb6a0ef1193ad', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'graphrag/utils.py', 'line': 695, 'function': 'rebuild_graph'}, 'file': 'graphrag/utils.py', 'line': 695, 'function': 'rebuild_graph', 'agent_name': 'rebuild_graph', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        graph = _gr_client.enforce(_gr_site, graph, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return graph
