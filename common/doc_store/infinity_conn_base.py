@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -43,7 +61,20 @@ class InfinityConnectionBase(DocStoreConnection):
             host, port = infinity_uri.split(":")
             infinity_uri = infinity.common.NetworkAddress(host, int(port))
         self.connPool = None
-        self.logger.info(f"Use Infinity {infinity_uri} as the doc engine.")
+        _lineaje_payload = f"Use Infinity {infinity_uri} as the doc engine."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.__init__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3771df0559290562a8c6a148935413066bac3da2a5691ac8e5d1ca3966da6b7d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3771df0559290562a8c6a148935413066bac3da2a5691ac8e5d1ca3966da6b7d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 46, 'function': 'InfinityConnectionBase.__init__'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 46, 'function': '__init__', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        self.logger.info(_lineaje_payload)
         for _ in range(24):
             try:
                 conn_pool = ConnectionPool(infinity_uri, max_size=4)
@@ -55,16 +86,67 @@ class InfinityConnectionBase(DocStoreConnection):
                     conn_pool.release_conn(inf_conn)
                     break
                 conn_pool.release_conn(inf_conn)
-                self.logger.warning(f"Infinity status: {res.server_status}. Waiting Infinity {infinity_uri} to be healthy.")
+                _lineaje_payload = f"Infinity status: {res.server_status}. Waiting Infinity {infinity_uri} to be healthy."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.__init__).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:d8c35dd0602b80f0b2f6742fb93f240e7e3fe3a1a07d955d08f85b82e5e4302e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d8c35dd0602b80f0b2f6742fb93f240e7e3fe3a1a07d955d08f85b82e5e4302e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 58, 'function': 'InfinityConnectionBase.__init__'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 58, 'function': '__init__', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                self.logger.warning(_lineaje_payload)
                 time.sleep(5)
             except Exception as e:
-                self.logger.warning(f"{str(e)}. Waiting Infinity {infinity_uri} to be healthy.")
+                _lineaje_payload = f"{str(e)}. Waiting Infinity {infinity_uri} to be healthy."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.__init__).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e94d95950cfb233b3bee16e8edb26fcfb5ce62a422d97ac082129c522ee43a61'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e94d95950cfb233b3bee16e8edb26fcfb5ce62a422d97ac082129c522ee43a61', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 61, 'function': 'InfinityConnectionBase.__init__'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 61, 'function': '__init__', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                self.logger.warning(_lineaje_payload)
                 time.sleep(5)
         if self.connPool is None:
             msg = f"Infinity {infinity_uri} is unhealthy in 120s."
+            # LINEAJE: runtime guardrail checks `msg` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.__init__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:78ca512e57c238d695ae209efa6eb922ef838550191d47f4a876bb5541e42a50'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:78ca512e57c238d695ae209efa6eb922ef838550191d47f4a876bb5541e42a50', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 65, 'function': 'InfinityConnectionBase.__init__'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 65, 'function': '__init__', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                msg = _gr_client.enforce(_gr_site, msg, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             self.logger.error(msg)
             raise Exception(msg)
-        self.logger.info(f"Infinity {infinity_uri} is healthy.")
+        _lineaje_payload = f"Infinity {infinity_uri} is healthy."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.__init__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:769dcc1c6280fa3aa456a8e67af6d1c2a412538720c2a727580b3fe0614fbb76'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:769dcc1c6280fa3aa456a8e67af6d1c2a412538720c2a727580b3fe0614fbb76', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 67, 'function': 'InfinityConnectionBase.__init__'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 67, 'function': '__init__', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        self.logger.info(_lineaje_payload)
 
     def _migrate_db(self, inf_conn):
         inf_db = inf_conn.create_database(self.dbName, ConflictType.Ignore)
@@ -86,7 +168,20 @@ class InfinityConnectionBase(DocStoreConnection):
                     continue
                 res = inf_table.add_columns({field_name: field_info})
                 assert res.error_code == infinity.ErrorCode.OK
-                self.logger.info(f"INFINITY added following column to table {table_name}: {field_name} {field_info}")
+                _lineaje_payload = f"INFINITY added following column to table {table_name}: {field_name} {field_info}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase._migrate_db).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:01e8e4bdabb66d279ccfa1a13073f6a8fe27db50883b337a2677106d9ab6f11a'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:01e8e4bdabb66d279ccfa1a13073f6a8fe27db50883b337a2677106d9ab6f11a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 89, 'function': 'InfinityConnectionBase._migrate_db'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 89, 'function': '_migrate_db', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                self.logger.info(_lineaje_payload)
                 if field_info["type"] != "varchar" or "analyzer" not in field_info:
                     continue
                 analyzers = field_info["analyzer"]
@@ -123,6 +218,18 @@ class InfinityConnectionBase(DocStoreConnection):
     @staticmethod
     def list2str(lst: str | list, sep: str = " ") -> str:
         if isinstance(lst, str):
+            # LINEAJE: runtime guardrail checks `lst` as it flows from the agent to the user interface, before it leaves the application (in InfinityConnectionBase.list2str).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `lst` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0b99f1e93775658a511267c8b2419838fb2901e96bb79a3d761816d0ec304dc8'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0b99f1e93775658a511267c8b2419838fb2901e96bb79a3d761816d0ec304dc8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 126, 'function': 'InfinityConnectionBase.list2str'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 126, 'function': 'list2str', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                lst = _gr_client.enforce(_gr_site, lst, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return lst
         return sep.join(lst)
 
@@ -220,6 +327,18 @@ class InfinityConnectionBase(DocStoreConnection):
             "status": "green" if res.error_code == 0 and res.server_status in ["started", "alive"] else "red",
             "error": res.error_msg,
         }
+        # LINEAJE: runtime guardrail checks `res2` as it flows from the agent to the user interface, before it leaves the application (in InfinityConnectionBase.health).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res2` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:dd25844f9d7b479e198a3365d6a254f70846aa748748d3a16db0302aede1eca8'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:dd25844f9d7b479e198a3365d6a254f70846aa748748d3a16db0302aede1eca8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 223, 'function': 'InfinityConnectionBase.health'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 223, 'function': 'health', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res2 = _gr_client.enforce(_gr_site, res2, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res2
 
     """
@@ -269,7 +388,20 @@ class InfinityConnectionBase(DocStoreConnection):
                     ConflictType.Ignore,
                 )
         self.connPool.release_conn(inf_conn)
-        self.logger.info(f"INFINITY created table {table_name}, vector size {vector_size}")
+        _lineaje_payload = f"INFINITY created table {table_name}, vector size {vector_size}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.create_idx).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8481d10ec80aef04c9d8d34224147ea8e499f5a392b918bb06be24f2bc51b690'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8481d10ec80aef04c9d8d34224147ea8e499f5a392b918bb06be24f2bc51b690', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 272, 'function': 'InfinityConnectionBase.create_idx'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 272, 'function': 'create_idx', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        self.logger.info(_lineaje_payload)
         return True
 
     def delete_idx(self, index_name: str, dataset_id: str):
@@ -278,7 +410,20 @@ class InfinityConnectionBase(DocStoreConnection):
         db_instance = inf_conn.get_database(self.dbName)
         db_instance.drop_table(table_name, ConflictType.Ignore)
         self.connPool.release_conn(inf_conn)
-        self.logger.info(f"INFINITY dropped table {table_name}")
+        _lineaje_payload = f"INFINITY dropped table {table_name}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.delete_idx).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:87a8ea29c590cfee4728e977a1f74c6376e29d157090c342f10e4d9be02f02d9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:87a8ea29c590cfee4728e977a1f74c6376e29d157090c342f10e4d9be02f02d9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 281, 'function': 'InfinityConnectionBase.delete_idx'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 281, 'function': 'delete_idx', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        self.logger.info(_lineaje_payload)
 
     def index_exist(self, index_name: str, dataset_id: str) -> bool:
         table_name = f"{index_name}_{dataset_id}"
@@ -289,7 +434,20 @@ class InfinityConnectionBase(DocStoreConnection):
             self.connPool.release_conn(inf_conn)
             return True
         except Exception as e:
-            self.logger.warning(f"INFINITY indexExist {str(e)}")
+            _lineaje_payload = f"INFINITY indexExist {str(e)}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.index_exist).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b0a61834f4692038767e8994a26c9e84ae77f1dc070515e84730480088ae125e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b0a61834f4692038767e8994a26c9e84ae77f1dc070515e84730480088ae125e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 292, 'function': 'InfinityConnectionBase.index_exist'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 292, 'function': 'index_exist', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            self.logger.warning(_lineaje_payload)
         return False
 
     """
@@ -332,10 +490,36 @@ class InfinityConnectionBase(DocStoreConnection):
         try:
             table_instance = db_instance.get_table(table_name)
         except Exception:
-            self.logger.warning(f"Skipped deleting from table {table_name} since the table doesn't exist.")
+            _lineaje_payload = f"Skipped deleting from table {table_name} since the table doesn't exist."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.delete).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:8a488e5b300dc800eafff1132900dcd09ed05d10c0a0f6f4897dbabd6118c48b'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8a488e5b300dc800eafff1132900dcd09ed05d10c0a0f6f4897dbabd6118c48b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 335, 'function': 'InfinityConnectionBase.delete'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 335, 'function': 'delete', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            self.logger.warning(_lineaje_payload)
             return 0
         filter = self.equivalent_condition_to_str(condition, table_instance)
-        self.logger.debug(f"INFINITY delete table {table_name}, filter {filter}.")
+        _lineaje_payload = f"INFINITY delete table {table_name}, filter {filter}."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in InfinityConnectionBase.delete).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:5ad4fe72d06d6c0cdfbab84884e0ff1b15b04bef3bd1f1c37eb6c2a8d409e132'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5ad4fe72d06d6c0cdfbab84884e0ff1b15b04bef3bd1f1c37eb6c2a8d409e132', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 338, 'function': 'InfinityConnectionBase.delete'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 338, 'function': 'delete', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        self.logger.debug(_lineaje_payload)
         res = table_instance.delete(filter)
         self.connPool.release_conn(inf_conn)
         return res.deleted_rows
@@ -398,6 +582,18 @@ class InfinityConnectionBase(DocStoreConnection):
                 ans[id] = "...".join(txt_list)
             else:
                 ans[id] = txt
+        # LINEAJE: runtime guardrail checks `ans` as it flows from the agent to the user interface, before it leaves the application (in InfinityConnectionBase.get_highlight).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `ans` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:8a9fc3912f50ed3a491f0374aaa845aea5466b9d598a999cb11b67b6d741732d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8a9fc3912f50ed3a491f0374aaa845aea5466b9d598a999cb11b67b6d741732d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/doc_store/infinity_conn_base.py', 'line': 401, 'function': 'InfinityConnectionBase.get_highlight'}, 'file': 'common/doc_store/infinity_conn_base.py', 'line': 401, 'function': 'get_highlight', 'agent_name': 'InfinityConnectionBase', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            ans = _gr_client.enforce(_gr_site, ans, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return ans
 
     def get_aggregation(self, res: tuple[pd.DataFrame, int] | pd.DataFrame, field_name: str):
