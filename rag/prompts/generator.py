@@ -29,6 +29,7 @@ from common.constants import TAG_FLD
 from common.token_utils import encoder, num_tokens_from_string
 
 
+# LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
 STOP_TOKEN="<|STOP|>"
 COMPLETE_TASK="complete_task"
 INPUT_UTILIZATION = 0.5
