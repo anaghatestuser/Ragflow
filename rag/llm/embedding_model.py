@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -59,7 +77,20 @@ class BuiltinEmbed(Base):
     _model_lock = threading.Lock()
 
     def __init__(self, key, model_name, **kwargs):
-        logging.info(f"Initialize BuiltinEmbed according to settings.EMBEDDING_CFG: {settings.EMBEDDING_CFG}")
+        _lineaje_payload = f"Initialize BuiltinEmbed according to settings.EMBEDDING_CFG: {settings.EMBEDDING_CFG}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BuiltinEmbed.__init__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c174a50d58a63d1f4a5743dd2efaa645a58fec46461865b0322fdcff4a22ac4c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c174a50d58a63d1f4a5743dd2efaa645a58fec46461865b0322fdcff4a22ac4c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 62, 'function': 'BuiltinEmbed.__init__'}, 'file': 'rag/llm/embedding_model.py', 'line': 62, 'function': '__init__', 'agent_name': 'BuiltinEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         embedding_cfg = settings.EMBEDDING_CFG
         if not BuiltinEmbed._model and "tei-" in os.getenv("COMPOSE_PROFILES", ""):
             with BuiltinEmbed._model_lock:
@@ -85,6 +116,16 @@ class BuiltinEmbed(Base):
         return ress, token_count
 
     def encode_queries(self, text: str):
+        # LINEAJE: runtime guardrail checks `text` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in BuiltinEmbed.encode_queries).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `text` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:beba11544b743fb9df3bc75be559572a11922086c45384eeb93ec2af41adfaec'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:beba11544b743fb9df3bc75be559572a11922086c45384eeb93ec2af41adfaec', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 88, 'function': 'BuiltinEmbed.encode_queries'}, 'file': 'rag/llm/embedding_model.py', 'line': 88, 'function': 'encode_queries', 'agent_name': 'BuiltinEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            text = _gr_client.enforce(_gr_site, text, content_type='application/json', variable_name='text', source_file=__file__, before_line=88)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         return self._model.encode_queries(text)
 
 
@@ -104,7 +145,20 @@ class OpenAIEmbed(Base):
         ress = []
         total_tokens = 0
         for i in range(0, len(texts), batch_size):
-            res = self.client.embeddings.create(input=texts[i : i + batch_size], model=self.model_name, encoding_format="float", extra_body={"drop_params": True})
+            _lineaje_input = texts[i : i + batch_size]
+            # LINEAJE: runtime guardrail checks `_lineaje_input` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in OpenAIEmbed.encode).
+            #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3ee1c3ced33eb6104f9fd1c0ef5ee55dbda53657162b8d15794762dfcf7edefc'
+            _lineaje__lineaje_input_evidence = {'_lineaje_input': _lineaje_input, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3ee1c3ced33eb6104f9fd1c0ef5ee55dbda53657162b8d15794762dfcf7edefc', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Qwen', 'purl': 'pkg:aimodel/Qwen@3-Embedding-0.6B', 'version': '3-Embedding-0.6B'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'OpenAIEmbed.encode', 'line': 107}, 'destination': {'entity_type': 'llm', 'name': 'Qwen3-Embedding-0.6B', 'provider': 'qwen', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 107, 'function': 'encode', 'agent_name': 'OpenAIEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:9c0f8ea815a61377'})
+            try:
+                _lineaje__lineaje_input_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_input_evidence, content_type='application/json')
+                _lineaje_input = _lineaje__lineaje_input_evidence.get('_lineaje_input', _lineaje_input) if isinstance(_lineaje__lineaje_input_evidence, dict) else _lineaje_input
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            res = self.client.embeddings.create(input=_lineaje_input, model=self.model_name, encoding_format="float", extra_body={"drop_params": True})
             try:
                 ress.extend([d.embedding for d in res.data])
                 total_tokens += total_token_count_from_response(res)
@@ -114,7 +168,20 @@ class OpenAIEmbed(Base):
         return np.array(ress), total_tokens
 
     def encode_queries(self, text):
-        res = self.client.embeddings.create(input=[truncate(text, 8191)], model=self.model_name, encoding_format="float",extra_body={"drop_params": True})
+        _lineaje_input = [truncate(text, 8191)]
+        # LINEAJE: runtime guardrail checks `_lineaje_input` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in OpenAIEmbed.encode_queries).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:032141e1826961f6bf1aa2dd7278a1d84bbc1b6cdd88d19bf73a2b6d3da961e6'
+        _lineaje__lineaje_input_evidence = {'_lineaje_input': _lineaje_input, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:032141e1826961f6bf1aa2dd7278a1d84bbc1b6cdd88d19bf73a2b6d3da961e6', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Qwen', 'purl': 'pkg:aimodel/Qwen@3-Embedding-0.6B', 'version': '3-Embedding-0.6B'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'OpenAIEmbed.encode_queries', 'line': 117}, 'destination': {'entity_type': 'llm', 'name': 'Qwen3-Embedding-0.6B', 'provider': 'qwen', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 117, 'function': 'encode_queries', 'agent_name': 'OpenAIEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:1f3ba6fa5c08e4d0'})
+        try:
+            _lineaje__lineaje_input_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_input_evidence, content_type='application/json')
+            _lineaje_input = _lineaje__lineaje_input_evidence.get('_lineaje_input', _lineaje_input) if isinstance(_lineaje__lineaje_input_evidence, dict) else _lineaje_input
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        res = self.client.embeddings.create(input=_lineaje_input, model=self.model_name, encoding_format="float",extra_body={"drop_params": True})
         try:
             return np.array(res.data[0].embedding), total_token_count_from_response(res)
         except Exception as _e:
@@ -136,7 +203,20 @@ class LocalAIEmbed(Base):
         batch_size = 16
         ress = []
         for i in range(0, len(texts), batch_size):
-            res = self.client.embeddings.create(input=texts[i : i + batch_size], model=self.model_name)
+            _lineaje_input = texts[i : i + batch_size]
+            # LINEAJE: runtime guardrail checks `_lineaje_input` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in LocalAIEmbed.encode).
+            #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:411fa09a010bb663ec9a37d686f804af0869fe546224c62a40200ea757e95cf6'
+            _lineaje__lineaje_input_evidence = {'_lineaje_input': _lineaje_input, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:411fa09a010bb663ec9a37d686f804af0869fe546224c62a40200ea757e95cf6', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Qwen', 'purl': 'pkg:aimodel/Qwen@3-Embedding-0.6B', 'version': '3-Embedding-0.6B'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'LocalAIEmbed.encode', 'line': 139}, 'destination': {'entity_type': 'llm', 'name': 'Qwen3-Embedding-0.6B', 'provider': 'qwen', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 139, 'function': 'encode', 'agent_name': 'LocalAIEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:f4245c59acb18982'})
+            try:
+                _lineaje__lineaje_input_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_input_evidence, content_type='application/json')
+                _lineaje_input = _lineaje__lineaje_input_evidence.get('_lineaje_input', _lineaje_input) if isinstance(_lineaje__lineaje_input_evidence, dict) else _lineaje_input
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            res = self.client.embeddings.create(input=_lineaje_input, model=self.model_name)
             try:
                 ress.extend([d.embedding for d in res.data])
             except Exception as _e:
@@ -239,6 +319,18 @@ class ZhipuEmbed(Base):
             texts = [truncate(t, MAX_LEN) for t in texts]
 
         for txt in texts:
+            # LINEAJE: runtime guardrail checks `txt` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in ZhipuEmbed.encode).
+            #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `txt` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b5f31c997c910ec4e721ebff257dd17b43fbe7a4fdc907d3473b1718cc1261c0'
+            _lineaje_txt_evidence = {'txt': txt, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b5f31c997c910ec4e721ebff257dd17b43fbe7a4fdc907d3473b1718cc1261c0', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'embedding-2', 'purl': 'pkg:aimodel/embedding-2@1.0.0', 'version': ''}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'ZhipuEmbed.encode', 'line': 242}, 'destination': {'entity_type': 'llm', 'name': 'embedding-2', 'provider': '', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 242, 'function': 'encode', 'agent_name': 'ZhipuEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:74baf199a9e822f1'})
+            try:
+                _lineaje_txt_evidence = _gr_client.enforce(_gr_site, _lineaje_txt_evidence, content_type='application/json')
+                txt = _lineaje_txt_evidence.get('txt', txt) if isinstance(_lineaje_txt_evidence, dict) else txt
+            except _gr_client.GuardrailUnavailableError:
+                pass
             res = self.client.embeddings.create(input=txt, model=self.model_name)
             try:
                 arr.append(res.data[0].embedding)
@@ -249,6 +341,18 @@ class ZhipuEmbed(Base):
         return np.array(arr), tks_num
 
     def encode_queries(self, text):
+        # LINEAJE: runtime guardrail checks `text` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in ZhipuEmbed.encode_queries).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:7457aae9101a56ed5ba3a977262883a71063f2e92417e3a1f5823385cd05e08b'
+        _lineaje_text_evidence = {'text': text, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7457aae9101a56ed5ba3a977262883a71063f2e92417e3a1f5823385cd05e08b', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'embedding-2', 'purl': 'pkg:aimodel/embedding-2@1.0.0', 'version': ''}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'ZhipuEmbed.encode_queries', 'line': 252}, 'destination': {'entity_type': 'llm', 'name': 'embedding-2', 'provider': '', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 252, 'function': 'encode_queries', 'agent_name': 'ZhipuEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:154dc308186ba6a8'})
+        try:
+            _lineaje_text_evidence = _gr_client.enforce(_gr_site, _lineaje_text_evidence, content_type='application/json')
+            text = _lineaje_text_evidence.get('text', text) if isinstance(_lineaje_text_evidence, dict) else text
+        except _gr_client.GuardrailUnavailableError:
+            pass
         res = self.client.embeddings.create(input=text, model=self.model_name)
         try:
             return np.array(res.data[0].embedding), total_token_count_from_response(res)
@@ -310,7 +414,20 @@ class XinferenceEmbed(Base):
         for i in range(0, len(texts), batch_size):
             res = None
             try:
-                res = self.client.embeddings.create(input=texts[i : i + batch_size], model=self.model_name)
+                _lineaje_input = texts[i : i + batch_size]
+                # LINEAJE: runtime guardrail checks `_lineaje_input` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in XinferenceEmbed.encode).
+                #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+                #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:aa42cf977363c63695dc8e9e80261ffe10ea8312ebb7b207cc2a60d7b40592e7'
+                _lineaje__lineaje_input_evidence = {'_lineaje_input': _lineaje_input, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:aa42cf977363c63695dc8e9e80261ffe10ea8312ebb7b207cc2a60d7b40592e7', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'embedding-2', 'purl': 'pkg:aimodel/embedding-2@1.0.0', 'version': ''}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'XinferenceEmbed.encode', 'line': 313}, 'destination': {'entity_type': 'llm', 'name': 'embedding-2', 'provider': '', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 313, 'function': 'encode', 'agent_name': 'XinferenceEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:ea3366d9e724c006'})
+                try:
+                    _lineaje__lineaje_input_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_input_evidence, content_type='application/json')
+                    _lineaje_input = _lineaje__lineaje_input_evidence.get('_lineaje_input', _lineaje_input) if isinstance(_lineaje__lineaje_input_evidence, dict) else _lineaje_input
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                res = self.client.embeddings.create(input=_lineaje_input, model=self.model_name)
                 ress.extend([d.embedding for d in res.data])
                 total_tokens += total_token_count_from_response(res)
             except Exception as _e:
@@ -321,7 +438,20 @@ class XinferenceEmbed(Base):
     def encode_queries(self, text):
         res = None
         try:
-            res = self.client.embeddings.create(input=[text], model=self.model_name)
+            _lineaje_input = [text]
+            # LINEAJE: runtime guardrail checks `_lineaje_input` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in XinferenceEmbed.encode_queries).
+            #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_input` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b169fddbd79cf59bfcddba0ec66803bccaae6772453731a56268a34d16b62087'
+            _lineaje__lineaje_input_evidence = {'_lineaje_input': _lineaje_input, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b169fddbd79cf59bfcddba0ec66803bccaae6772453731a56268a34d16b62087', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='BLOCK', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'embedding-2', 'purl': 'pkg:aimodel/embedding-2@1.0.0', 'version': ''}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'XinferenceEmbed.encode_queries', 'line': 324}, 'destination': {'entity_type': 'llm', 'name': 'embedding-2', 'provider': '', 'version': ''}, 'file': 'rag/llm/embedding_model.py', 'line': 324, 'function': 'encode_queries', 'agent_name': 'XinferenceEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:b39fa63108286392'})
+            try:
+                _lineaje__lineaje_input_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_input_evidence, content_type='application/json')
+                _lineaje_input = _lineaje__lineaje_input_evidence.get('_lineaje_input', _lineaje_input) if isinstance(_lineaje__lineaje_input_evidence, dict) else _lineaje_input
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            res = self.client.embeddings.create(input=_lineaje_input, model=self.model_name)
             return np.array(res.data[0].embedding), total_token_count_from_response(res)
         except Exception as _e:
             log_exception(_e, res)
@@ -385,6 +515,16 @@ class JinaMultiVecEmbed(Base):
                 data['truncate'] = True
 
             response = requests.post(self.base_url, headers=self.headers, json=data)
+            # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in JinaMultiVecEmbed.encode).
+            #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3cef4eda2ba4fe2ee73618cef16627eb3b6f0cd9dc4024044bc60e947d669fe7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3cef4eda2ba4fe2ee73618cef16627eb3b6f0cd9dc4024044bc60e947d669fe7', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 387, 'function': 'JinaMultiVecEmbed.encode'}, 'file': 'rag/llm/embedding_model.py', 'line': 387, 'function': 'encode', 'agent_name': 'JinaMultiVecEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=387)
+            except _gr_client.GuardrailUnavailableError:
+                pass
             try:
                 res = response.json()
                 for d in res['data']:
@@ -473,7 +613,20 @@ class BedrockEmbed(Base):
         key = json.loads(key)
         mode = key.get("auth_mode")
         if not mode:
-            logging.error("Bedrock auth_mode is not provided in the key")
+            _lineaje_payload = "Bedrock auth_mode is not provided in the key"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in BedrockEmbed.__init__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9066c272479b8dac50c69d0120c7b2cb339c88bb512a5869d0e55da82dd69e84'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9066c272479b8dac50c69d0120c7b2cb339c88bb512a5869d0e55da82dd69e84', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 476, 'function': 'BedrockEmbed.__init__'}, 'file': 'rag/llm/embedding_model.py', 'line': 476, 'function': '__init__', 'agent_name': 'BedrockEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             raise ValueError("Bedrock auth_mode must be provided in the key")
 
         self.bedrock_region = key.get("bedrock_region")
@@ -512,7 +665,36 @@ class BedrockEmbed(Base):
             elif self.is_cohere:
                 body = {"texts": [text], "input_type": "search_document"}
 
-            response = self.client.invoke_model(modelId=self.model_name, body=json.dumps(body))
+            _lineaje_body = json.dumps(body)
+            # LINEAJE: runtime guardrail checks `_lineaje_body` as it flows from the agent to the LLM, before it is sent to the model (in BedrockEmbed.encode).
+            #   Detected: this statement moves data from the agent to the LLM with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_body` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:1f1f2ad4063007d9b7bb345bc576ad41da2b01159617aab0c02b80a6bba50d25'
+            _lineaje__lineaje_body_evidence = {'_lineaje_body': _lineaje_body, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+            _gr_client = _lineaje_load_gr_client()
+            _lineaje_interaction_id = _gr_client.new_interaction_id()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1f1f2ad4063007d9b7bb345bc576ad41da2b01159617aab0c02b80a6bba50d25', phase='pre_model', boundary={'source': 'agent_message', 'sink': 'model'}, fail_mode='BLOCK', source_type='agent', destination_type='llm', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'destination': {'entity_type': 'llm', 'name': 'mistral-embed', 'provider': 'mistral', 'version': ''}, 'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Mistral', 'purl': 'pkg:aimodel/Mistral@embed', 'version': 'embed'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'BedrockEmbed.encode', 'line': 515}, 'file': 'rag/llm/embedding_model.py', 'line': 515, 'function': 'encode', 'agent_name': 'BedrockEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:b189c35c0f122b58'}, interaction_id=_lineaje_interaction_id)
+            try:
+                _lineaje__lineaje_body_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_body_evidence, content_type='application/json')
+                _lineaje_body = _lineaje__lineaje_body_evidence.get('_lineaje_body', _lineaje_body) if isinstance(_lineaje__lineaje_body_evidence, dict) else _lineaje_body
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                raise
+            response = self.client.invoke_model(modelId=self.model_name, body=_lineaje_body)
+            # LINEAJE: runtime guardrail checks `response` as it flows from the LLM to the agent, after the model replies (in BedrockEmbed.encode).
+            #   Detected: this statement moves data from the LLM to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_011, AI_DAT_SEC_025, AI_DAT_SEC_027, AI_DAT_SEC_029; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f2232137562131daebdf6f6ba59f166212312955321fe2d14ffad3e9c7fb4486'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f2232137562131daebdf6f6ba59f166212312955321fe2d14ffad3e9c7fb4486', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='llm', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'destination': {'entity_type': 'llm', 'name': 'mistral-embed', 'provider': 'mistral', 'version': ''}, 'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Mistral', 'purl': 'pkg:aimodel/Mistral@embed', 'version': 'embed'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'BedrockEmbed.encode', 'line': 515}, 'file': 'rag/llm/embedding_model.py', 'line': 515, 'function': 'encode', 'agent_name': 'BedrockEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:b189c35c0f122b58'}, interaction_id=locals().get('_lineaje_interaction_id'))
+            try:
+                if not hasattr(_gr_client, 'enforce_reply'):
+                    __import__("logging").getLogger("lineaje.gr_client").error("gr_stub_client.py predates enforce_reply (STUB_API 2): this site is NOT enforced; replace gr_stub_client.py with the current companion")
+                    raise _gr_client.GuardrailUnavailableError("stale gr_stub_client.py: no enforce_reply")
+                response = _gr_client.enforce_reply(_gr_site, response, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
             try:
                 model_response = json.loads(response["body"].read())
                 embeddings.extend([model_response["embedding"]])
@@ -530,7 +712,36 @@ class BedrockEmbed(Base):
         elif self.is_cohere:
             body = {"texts": [truncate(text, 8196)], "input_type": "search_query"}
 
-        response = self.client.invoke_model(modelId=self.model_name, body=json.dumps(body))
+        _lineaje_body = json.dumps(body)
+        # LINEAJE: runtime guardrail checks `_lineaje_body` as it flows from the agent to the LLM, before it is sent to the model (in BedrockEmbed.encode_queries).
+        #   Detected: this statement moves data from the agent to the LLM with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_AGENT_ACTIVITY_LOG, AI_APP_SEC_006, AI_APP_SEC_028, AI_APP_SEC_070 (+2 more); sensitive values in `_lineaje_body` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3e10a25ed153fef8abeb43e3911d18cca738c7f987e45ac22b0b7f3581d1cd4d'
+        _lineaje__lineaje_body_evidence = {'_lineaje_body': _lineaje_body, 'model': self.model_name, 'model_source': 'call_kwarg', 'project': 'tree'}
+        _gr_client = _lineaje_load_gr_client()
+        _lineaje_interaction_id = _gr_client.new_interaction_id()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3e10a25ed153fef8abeb43e3911d18cca738c7f987e45ac22b0b7f3581d1cd4d', phase='pre_model', boundary={'source': 'agent_message', 'sink': 'model'}, fail_mode='BLOCK', source_type='agent', destination_type='llm', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'destination': {'entity_type': 'llm', 'name': 'mistral-embed', 'provider': 'mistral', 'version': ''}, 'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Mistral', 'purl': 'pkg:aimodel/Mistral@embed', 'version': 'embed'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'BedrockEmbed.encode_queries', 'line': 533}, 'file': 'rag/llm/embedding_model.py', 'line': 533, 'function': 'encode_queries', 'agent_name': 'BedrockEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:f922df0eaac2116b'}, interaction_id=_lineaje_interaction_id)
+        try:
+            _lineaje__lineaje_body_evidence = _gr_client.enforce(_gr_site, _lineaje__lineaje_body_evidence, content_type='application/json')
+            _lineaje_body = _lineaje__lineaje_body_evidence.get('_lineaje_body', _lineaje_body) if isinstance(_lineaje__lineaje_body_evidence, dict) else _lineaje_body
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            raise
+        response = self.client.invoke_model(modelId=self.model_name, body=_lineaje_body)
+        # LINEAJE: runtime guardrail checks `response` as it flows from the LLM to the agent, after the model replies (in BedrockEmbed.encode_queries).
+        #   Detected: this statement moves data from the LLM to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_011, AI_DAT_SEC_025, AI_DAT_SEC_027, AI_DAT_SEC_029; sensitive values in `response` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:485c9444fb532fe40e31290498bb664f644c90544dfac1dbb3dc822bd2458eab'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:485c9444fb532fe40e31290498bb664f644c90544dfac1dbb3dc822bd2458eab', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='llm', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'destination': {'entity_type': 'llm', 'name': 'mistral-embed', 'provider': 'mistral', 'version': ''}, 'identity': {'app': {'name': 'ragflow', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo', 'version': 'main'}, 'destination': {'entity_type': 'aimodel', 'name': 'Mistral', 'purl': 'pkg:aimodel/Mistral@embed', 'version': 'embed'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'function': 'BedrockEmbed.encode_queries', 'line': 533}, 'file': 'rag/llm/embedding_model.py', 'line': 533, 'function': 'encode_queries', 'agent_name': 'BedrockEmbed', 'agent_name_source': 'inferred_from_class', 'boundary_id': 'bnd:f922df0eaac2116b'}, interaction_id=locals().get('_lineaje_interaction_id'))
+        try:
+            if not hasattr(_gr_client, 'enforce_reply'):
+                __import__("logging").getLogger("lineaje.gr_client").error("gr_stub_client.py predates enforce_reply (STUB_API 2): this site is NOT enforced; replace gr_stub_client.py with the current companion")
+                raise _gr_client.GuardrailUnavailableError("stale gr_stub_client.py: no enforce_reply")
+            response = _gr_client.enforce_reply(_gr_site, response, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
         try:
             model_response = json.loads(response["body"].read())
             embeddings.extend(model_response["embedding"])
@@ -606,6 +817,16 @@ class NvidiaEmbed(Base):
                 "truncate": "END",
             }
             response = requests.post(self.base_url, headers=self.headers, json=payload)
+            # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in NvidiaEmbed.encode).
+            #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a3d896e80bf7c8fadcfef42bc9bcf01a52ef050158ae6514d6a48cb056a4388a'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a3d896e80bf7c8fadcfef42bc9bcf01a52ef050158ae6514d6a48cb056a4388a', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 608, 'function': 'NvidiaEmbed.encode'}, 'file': 'rag/llm/embedding_model.py', 'line': 608, 'function': 'encode', 'agent_name': 'NvidiaEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=608)
+            except _gr_client.GuardrailUnavailableError:
+                pass
             try:
                 res = response.json()
                 ress.extend([d["embedding"] for d in res["data"]])
@@ -743,6 +964,16 @@ class SILICONFLOWEmbed(Base):
                 "encoding_format": "float",
             }
             response = requests.post(self.base_url, json=payload, headers=self.headers)
+            # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in SILICONFLOWEmbed.encode).
+            #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:88ec57aedc032822dac9d16d66610f4517619a8d981458408773ee9eaba5853e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:88ec57aedc032822dac9d16d66610f4517619a8d981458408773ee9eaba5853e', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 745, 'function': 'SILICONFLOWEmbed.encode'}, 'file': 'rag/llm/embedding_model.py', 'line': 745, 'function': 'encode', 'agent_name': 'SILICONFLOWEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=745)
+            except _gr_client.GuardrailUnavailableError:
+                pass
             try:
                 res = response.json()
                 ress.extend([d["embedding"] for d in res["data"]])
@@ -760,6 +991,16 @@ class SILICONFLOWEmbed(Base):
             "encoding_format": "float",
         }
         response = requests.post(self.base_url, json=payload, headers=self.headers)
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in SILICONFLOWEmbed.encode_queries).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:d1626d15512a5cc5d22f931bc054da6954520d0835ccdbffc898296c20a68ac7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d1626d15512a5cc5d22f931bc054da6954520d0835ccdbffc898296c20a68ac7', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 762, 'function': 'SILICONFLOWEmbed.encode_queries'}, 'file': 'rag/llm/embedding_model.py', 'line': 762, 'function': 'encode_queries', 'agent_name': 'SILICONFLOWEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=762)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         try:
             res = response.json()
             return np.array(res["data"][0]["embedding"]), total_token_count_from_response(res)
@@ -870,6 +1111,16 @@ class HuggingFaceEmbed(Base):
 
     def encode(self, texts: list):
         response = requests.post(f"{self.base_url}/embed", json={"inputs": texts}, headers={"Content-Type": "application/json"})
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in HuggingFaceEmbed.encode).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a265c01a73b12f467044323697b38ee4f39a206012715789acc33c7e388e3412'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a265c01a73b12f467044323697b38ee4f39a206012715789acc33c7e388e3412', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 872, 'function': 'HuggingFaceEmbed.encode'}, 'file': 'rag/llm/embedding_model.py', 'line': 872, 'function': 'encode', 'agent_name': 'HuggingFaceEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=872)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         if response.status_code == 200:
             embeddings = response.json()
         else:
@@ -878,6 +1129,16 @@ class HuggingFaceEmbed(Base):
 
     def encode_queries(self, text: str):
         response = requests.post(f"{self.base_url}/embed", json={"inputs": text}, headers={"Content-Type": "application/json"})
+        # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in HuggingFaceEmbed.encode_queries).
+        #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f8d8e57a922154ef51ba0b2a1e6cb46208dbd2ce03ebe46e5e00ff35b8c91995'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f8d8e57a922154ef51ba0b2a1e6cb46208dbd2ce03ebe46e5e00ff35b8c91995', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/llm/embedding_model.py', 'line': 880, 'function': 'HuggingFaceEmbed.encode_queries'}, 'file': 'rag/llm/embedding_model.py', 'line': 880, 'function': 'encode_queries', 'agent_name': 'HuggingFaceEmbed', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=880)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         if response.status_code == 200:
             embedding = response.json()[0]
             return np.array(embedding), num_tokens_from_string(text)
