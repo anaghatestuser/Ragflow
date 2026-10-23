@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -123,6 +141,16 @@ class Graph:
                     dsl["components"][k][c] = json.loads(str(cpn["obj"]))
                     continue
                 dsl["components"][k][c] = deepcopy(cpn[c])
+        # LINEAJE: runtime guardrail checks `dsl` as it flows from the agent to an external endpoint, before it leaves the application (in Graph.__str__).
+        #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `dsl` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2d12b1aeb54e2748ed43adda385d6de9a1827653be5f62b591843820bbb2fe8b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2d12b1aeb54e2748ed43adda385d6de9a1827653be5f62b591843820bbb2fe8b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 126, 'function': 'Graph.__str__'}, 'file': 'agent/canvas.py', 'line': 126, 'function': '__str__', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dsl = _gr_client.enforce(_gr_site, dsl, content_type='application/json', variable_name='dsl', source_file=__file__, before_line=126)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         return json.dumps(dsl, ensure_ascii=False)
 
     def reset(self):
@@ -133,6 +161,18 @@ class Graph:
             REDIS_CONN.delete(f"{self.task_id}-logs")
             REDIS_CONN.delete(f"{self.task_id}-cancel")
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Graph.reset).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f7ad8dae67022a6c77dd7d3a0dd2d088a37c2a8c75528e98ba6ceb16f1f4a67f'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f7ad8dae67022a6c77dd7d3a0dd2d088a37c2a8c75528e98ba6ceb16f1f4a67f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 136, 'function': 'Graph.reset'}, 'file': 'agent/canvas.py', 'line': 136, 'function': 'reset', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
 
     def get_component_name(self, cid):
@@ -178,6 +218,16 @@ class Graph:
             elif isinstance(v, str):
                 rep = v
             else:
+                # LINEAJE: runtime guardrail checks `v` as it flows from the agent to an external endpoint, before it leaves the application (in Graph.get_value_with_variable).
+                #   Detected: this statement moves data from the agent to an external endpoint with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `v` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:b20d82e9352ca373f546c4370557bc3c13f35468889fe6b929a5b02c558a6d91'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b20d82e9352ca373f546c4370557bc3c13f35468889fe6b929a5b02c558a6d91', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='external', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 181, 'function': 'Graph.get_value_with_variable'}, 'file': 'agent/canvas.py', 'line': 181, 'function': 'get_value_with_variable', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    v = _gr_client.enforce(_gr_site, v, content_type='application/json', variable_name='v', source_file=__file__, before_line=181)
+                except _gr_client.GuardrailUnavailableError:
+                    pass
                 rep = json.dumps(v, ensure_ascii=False)
 
             out_parts.append(rep)
@@ -200,12 +250,36 @@ class Graph:
         root_val = cpn["obj"].output(root_key)
 
         if not rest:
+            # LINEAJE: runtime guardrail checks `root_val` as it flows from the agent to the user interface, before it leaves the application (in Graph.get_variable_value).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `root_val` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9b128d6698ecdd3e4ae694f0bf5be0c138f15de0fb404bbfdbb3c064c11e5842'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b128d6698ecdd3e4ae694f0bf5be0c138f15de0fb404bbfdbb3c064c11e5842', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 203, 'function': 'Graph.get_variable_value'}, 'file': 'agent/canvas.py', 'line': 203, 'function': 'get_variable_value', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                root_val = _gr_client.enforce(_gr_site, root_val, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return root_val
         return self.get_variable_param_value(root_val,rest)
 
     def get_variable_param_value(self, obj: Any, path: str) -> Any:
         cur = obj
         if not path:
+            # LINEAJE: runtime guardrail checks `cur` as it flows from the agent to the user interface, before it leaves the application (in Graph.get_variable_param_value).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cur` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:39cc19674c3bf61b1686c14e1dbd5746caecb301a518c7ae25e13ff19a955588'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:39cc19674c3bf61b1686c14e1dbd5746caecb301a518c7ae25e13ff19a955588', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 209, 'function': 'Graph.get_variable_param_value'}, 'file': 'agent/canvas.py', 'line': 209, 'function': 'get_variable_param_value', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                cur = _gr_client.enforce(_gr_site, cur, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return cur
         for key in path.split('.'):
             if cur is None:
@@ -230,6 +304,18 @@ class Graph:
                 continue
 
             cur = getattr(cur, key, None)
+        # LINEAJE: runtime guardrail checks `cur` as it flows from the agent to the user interface, before it leaves the application (in Graph.get_variable_param_value).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `cur` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0ffde5f6504dc27fc2ebc62d98bed5dbc3d58340f64a41555ec5affe5a36dd4b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0ffde5f6504dc27fc2ebc62d98bed5dbc3d58340f64a41555ec5affe5a36dd4b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 233, 'function': 'Graph.get_variable_param_value'}, 'file': 'agent/canvas.py', 'line': 233, 'function': 'get_variable_param_value', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            cur = _gr_client.enforce(_gr_site, cur, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return cur
 
     def set_variable_value(self, exp: str,value):
@@ -256,12 +342,36 @@ class Graph:
         cur = obj
         keys = path.split('.')
         if not path:
+            # LINEAJE: runtime guardrail checks `value` as it flows from the agent to the user interface, before it leaves the application (in Graph.set_variable_param_value).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `value` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:79ea3cc4dee256774bd40dec5acf1aec851c1080af0c5228ff816fbabc0fc588'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:79ea3cc4dee256774bd40dec5acf1aec851c1080af0c5228ff816fbabc0fc588', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 259, 'function': 'Graph.set_variable_param_value'}, 'file': 'agent/canvas.py', 'line': 259, 'function': 'set_variable_param_value', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                value = _gr_client.enforce(_gr_site, value, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return value
         for key in keys:
             if key not in cur or not isinstance(cur[key], dict):
                 cur[key] = {}
             cur = cur[key]
         cur[keys[-1]] = value
+        # LINEAJE: runtime guardrail checks `obj` as it flows from the agent to the user interface, before it leaves the application (in Graph.set_variable_param_value).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `obj` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ebba10cddf9a6f8189585a13595d1d0affa3345cdab0410c61bbad0f605962e6'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ebba10cddf9a6f8189585a13595d1d0affa3345cdab0410c61bbad0f605962e6', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 265, 'function': 'Graph.set_variable_param_value'}, 'file': 'agent/canvas.py', 'line': 265, 'function': 'set_variable_param_value', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            obj = _gr_client.enforce(_gr_site, obj, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return obj
 
     def is_canceled(self) -> bool:
@@ -271,6 +381,18 @@ class Graph:
         try:
             REDIS_CONN.set(f"{self.task_id}-cancel", "x")
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Graph.cancel_task).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9d205b1e23443a7da1973eeed9f0af306a6896d35526b32d0ea22185dc266f54'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9d205b1e23443a7da1973eeed9f0af306a6896d35526b32d0ea22185dc266f54', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 274, 'function': 'Graph.cancel_task'}, 'file': 'agent/canvas.py', 'line': 274, 'function': 'cancel_task', 'agent_name': 'Graph', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
             return False
         return True
@@ -320,7 +442,20 @@ class Canvas(Graph):
             self.history = []
             self.retrieval = []
             self.memory = []
-        print(self.variables)
+        _lineaje_payload = self.variables
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Canvas.reset).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:eac373ae33fc13e460b82c9728bdb4a3fefd2bcb2d47ccbb357a042b1bb00248'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:eac373ae33fc13e460b82c9728bdb4a3fefd2bcb2d47ccbb357a042b1bb00248', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 323, 'function': 'Canvas.reset'}, 'file': 'agent/canvas.py', 'line': 323, 'function': 'reset', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        print(_lineaje_payload)
         for k in self.globals.keys():
             if k.startswith("sys."):
                 if isinstance(self.globals[k], str):
@@ -404,6 +539,18 @@ class Canvas(Graph):
 
         if self.is_canceled():
             msg = f"Task {self.task_id} has been canceled before starting."
+            # LINEAJE: runtime guardrail checks `msg` as it flows from the agent to the application log, before it is written to the log (in Canvas.decorate).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:438264d3792a77c07f926c92afa5fccaee9a299b309a6197ec5eb72659548959'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:438264d3792a77c07f926c92afa5fccaee9a299b309a6197ec5eb72659548959', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 407, 'function': 'Canvas.run'}, 'file': 'agent/canvas.py', 'line': 407, 'function': 'decorate', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                msg = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, msg, content_type='application/json'))
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.info(msg)
             raise TaskCanceledException(msg)
 
@@ -413,6 +560,18 @@ class Canvas(Graph):
         async def _run_batch(f, t):
             if self.is_canceled():
                 msg = f"Task {self.task_id} has been canceled during batch execution."
+                # LINEAJE: runtime guardrail checks `msg` as it flows from the agent to the application log, before it is written to the log (in Canvas._run_batch).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `msg` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:4be9e09a6baaf02296150866f83e7d6881b597f2a0748458dbf1bf6f68f40e1c'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4be9e09a6baaf02296150866f83e7d6881b597f2a0748458dbf1bf6f68f40e1c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 416, 'function': 'Canvas.run._run_batch'}, 'file': 'agent/canvas.py', 'line': 416, 'function': '_run_batch', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    msg = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, msg, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 logging.info(msg)
                 raise TaskCanceledException(msg)
 
@@ -516,6 +675,18 @@ class Canvas(Graph):
                                     }
                                 )
                                 buff_m = ""
+                                # LINEAJE: runtime guardrail checks `ev` as it flows from the agent to the user interface, before it leaves the application (in Canvas._process_stream).
+                                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `ev` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                                #   Do not remove without review. site_id='site:sha256:4a8beca25e629b92130bd78972e9e37a7154cf95a488e98a1a785deaec292322'
+                                _gr_client = _lineaje_load_gr_client()
+                                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4a8beca25e629b92130bd78972e9e37a7154cf95a488e98a1a785deaec292322', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 519, 'function': 'Canvas.run'}, 'file': 'agent/canvas.py', 'line': 519, 'function': '_process_stream', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                                try:
+                                    ev = _gr_client.enforce(_gr_site, ev, content_type='text/plain')
+                                except _gr_client.GuardrailUnavailableError:
+                                    pass
+                                except PermissionError:
+                                    pass
                                 return ev
 
                             return decorate("message", {"content": m})
@@ -608,7 +779,20 @@ class Canvas(Graph):
                     _extend_path(cpn["downstream"])
 
             if self.error:
-                logging.error(f"Runtime Error: {self.error}")
+                _lineaje_payload = f"Runtime Error: {self.error}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Canvas._node_finished).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:57a44ba2cb127a6ea5faec724fe7bfd2ee51fd3d350fb55fac2e7b92f1a9831b'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:57a44ba2cb127a6ea5faec724fe7bfd2ee51fd3d350fb55fac2e7b92f1a9831b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 611, 'function': 'Canvas.run'}, 'file': 'agent/canvas.py', 'line': 611, 'function': '_node_finished', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
                 break
             idx = to
 
@@ -686,6 +870,18 @@ class Canvas(Graph):
             if len(text) > MAX_LEN:
                 text = text[:MAX_LEN]
 
+            # LINEAJE: runtime guardrail checks `text` as it flows from the agent to the user interface, before it leaves the application (in Canvas.clean_tts_text).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:690671276a292370bc946969f8f6570fa3b9c7b466a0da9927bb7c27897eaeef'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:690671276a292370bc946969f8f6570fa3b9c7b466a0da9927bb7c27897eaeef', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 689, 'function': 'Canvas.tts.clean_tts_text'}, 'file': 'agent/canvas.py', 'line': 689, 'function': 'clean_tts_text', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                text = _gr_client.enforce(_gr_site, text, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return text
         if not tts_mdl or not text:
             return None
@@ -697,19 +893,56 @@ class Canvas(Graph):
             for chunk in tts_mdl.tts(text):
                 bin += chunk
         except Exception as e:
-            logging.error(f"TTS failed: {e}, text={text!r}")
+            _lineaje_payload = f"TTS failed: {e}, text={text!r}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Canvas.clean_tts_text).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:8821b3cbf419ea6683708b60f51f6e8fb74d4d63611c32de1363564226bda0b8'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8821b3cbf419ea6683708b60f51f6e8fb74d4d63611c32de1363564226bda0b8', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 700, 'function': 'Canvas.tts'}, 'file': 'agent/canvas.py', 'line': 700, 'function': 'clean_tts_text', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             return None
         return binascii.hexlify(bin).decode("utf-8")
 
     def get_history(self, window_size):
         convs = []
         if window_size <= 0:
+            # LINEAJE: runtime guardrail checks `convs` as it flows from the agent to the user interface, before it leaves the application (in Canvas.get_history).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `convs` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f285f0712277919c91c7c3c2c896ac0ad4029568811d48995ce941df10b1e009'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f285f0712277919c91c7c3c2c896ac0ad4029568811d48995ce941df10b1e009', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 707, 'function': 'Canvas.get_history'}, 'file': 'agent/canvas.py', 'line': 707, 'function': 'get_history', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                convs = _gr_client.enforce(_gr_site, convs, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return convs
         for role, obj in self.history[window_size * -2:]:
             if isinstance(obj, dict):
                 convs.append({"role": role, "content": obj.get("content", "")})
             else:
                 convs.append({"role": role, "content": str(obj)})
+        # LINEAJE: runtime guardrail checks `convs` as it flows from the agent to the user interface, before it leaves the application (in Canvas.get_history).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `convs` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:dcdadaef24fbffe975353256f14934131c8c4363880fa593bc342c39176b9920'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:dcdadaef24fbffe975353256f14934131c8c4363880fa593bc342c39176b9920', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 713, 'function': 'Canvas.get_history'}, 'file': 'agent/canvas.py', 'line': 713, 'function': 'get_history', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            convs = _gr_client.enforce(_gr_site, convs, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return convs
 
     def add_user_input(self, question):
@@ -777,6 +1010,18 @@ class Canvas(Graph):
                 }]
             REDIS_CONN.set_obj(f"{self.task_id}-{self.message_id}-logs", obj, 60*10)
         except Exception as e:
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in Canvas.tool_use_callback).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f5589dfb4481381c630bf6a217f99bcfecb0e90d67440e936a796b4738a12fa9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f5589dfb4481381c630bf6a217f99bcfecb0e90d67440e936a796b4738a12fa9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/canvas.py', 'line': 780, 'function': 'Canvas.tool_use_callback'}, 'file': 'agent/canvas.py', 'line': 780, 'function': 'tool_use_callback', 'agent_name': 'Canvas', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             logging.exception(e)
 
     def add_reference(self, chunks: list[object], doc_infos: list[object]):
