@@ -14,6 +14,24 @@
 #  limitations under the License.
 #
 from __future__ import annotations
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import logging
 import re
@@ -66,13 +84,39 @@ class DoclingParser(RAGFlowPdfParser):
         
     def check_installation(self) -> bool:
         if DocumentConverter is None:
-            self.logger.warning("[Docling] 'docling' is not importable, please: pip install docling")
+            _lineaje_payload = "[Docling] 'docling' is not importable, please: pip install docling"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DoclingParser.check_installation).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:4209ce494aa55792380020aea5601f1944acb81ab9d28fa36e769310816540c1'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4209ce494aa55792380020aea5601f1944acb81ab9d28fa36e769310816540c1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 69, 'function': 'DoclingParser.check_installation'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 69, 'function': 'check_installation', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            self.logger.warning(_lineaje_payload)
             return False
         try:
             _ = DocumentConverter()
             return True
         except Exception as e:
-            self.logger.error(f"[Docling] init DocumentConverter failed: {e}")
+            _lineaje_payload = f"[Docling] init DocumentConverter failed: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DoclingParser.check_installation).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:1c0177f4291ca33aee51630488749639c66f22b8828b450df5b9166b476a9c21'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1c0177f4291ca33aee51630488749639c66f22b8828b450df5b9166b476a9c21', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 75, 'function': 'DoclingParser.check_installation'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 75, 'function': 'check_installation', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            self.logger.error(_lineaje_payload)
             return False
 
     def __images__(self, fnm, zoomin: int = 1, page_from=0, page_to=600, callback=None):
@@ -85,6 +129,18 @@ class DoclingParser(RAGFlowPdfParser):
                 self.page_images = [p.to_image(resolution=72 * zoomin, antialias=True).original for p in pages]
         except Exception as e:
             self.page_images = []
+            # LINEAJE: runtime guardrail checks `e` as it flows from the agent to the application log, before it is written to the log (in DoclingParser.__images__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `e` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:284eacf88d25c089e742a93f73f197a48b44161847602b61659159f7b47f6b07'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:284eacf88d25c089e742a93f73f197a48b44161847602b61659159f7b47f6b07', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 88, 'function': 'DoclingParser.__images__'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 88, 'function': '__images__', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                e = _gr_client.enforce(_gr_site, e, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             self.logger.exception(e)
 
     def _make_line_tag(self,bbox: _BBox) -> str:
@@ -105,6 +161,18 @@ class DoclingParser(RAGFlowPdfParser):
             pn, left, right, top, bottom = tag.strip("#").strip("@").split("\t")
             left, right, top, bottom = float(left), float(right), float(top), float(bottom)
             poss.append(([int(p) - 1 for p in pn.split("-")], left, right, top, bottom))
+        # LINEAJE: runtime guardrail checks `poss` as it flows from the agent to the user interface, before it leaves the application (in DoclingParser.extract_positions).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `poss` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:bafc42433a3ec7e59648ce9658ede7e4f57f5a5aee55dd22a3d0a70badb6af9f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bafc42433a3ec7e59648ce9658ede7e4f57f5a5aee55dd22a3d0a70badb6af9f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 108, 'function': 'DoclingParser.extract_positions'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 108, 'function': 'extract_positions', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            poss = _gr_client.enforce(_gr_site, poss, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return poss
 
     def crop(self, text: str, ZM: int = 1, need_position: bool = False):
@@ -206,6 +274,18 @@ class DoclingParser(RAGFlowPdfParser):
                 sections.append((section + tag, typ))
             else:
                 sections.append((section, tag))
+        # LINEAJE: runtime guardrail checks `sections` as it flows from the agent to the user interface, before it leaves the application (in DoclingParser._transfer_to_sections).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `sections` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1273c1a581d394c58333b2f9e11794d9b2cbf68f9abb9908c6100d72cb929fc7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1273c1a581d394c58333b2f9e11794d9b2cbf68f9abb9908c6100d72cb929fc7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 209, 'function': 'DoclingParser._transfer_to_sections'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 209, 'function': '_transfer_to_sections', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            sections = _gr_client.enforce(_gr_site, sections, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return sections
 
     def cropout_docling_table(self, page_no: int, bbox: tuple[float, float, float, float], zoomin: int = 1):
@@ -276,6 +356,18 @@ class DoclingParser(RAGFlowPdfParser):
             except Exception:
                 pass
             tables.append(((img, [captions]), positions if positions else ""))
+        # LINEAJE: runtime guardrail checks `tables` as it flows from the agent to the user interface, before it leaves the application (in DoclingParser._transfer_to_tables).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `tables` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:19798f2c52e78a1613f7a76cfc42699987f93d545da07d050505e45170b6c969'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:19798f2c52e78a1613f7a76cfc42699987f93d545da07d050505e45170b6c969', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 279, 'function': 'DoclingParser._transfer_to_tables'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 279, 'function': '_transfer_to_tables', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            tables = _gr_client.enforce(_gr_site, tables, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return tables
 
     def parse_pdf(
@@ -301,9 +393,30 @@ class DoclingParser(RAGFlowPdfParser):
             tmp_pdf = tmpdir / name
             with open(tmp_pdf, "wb") as f:
                 if isinstance(binary, (bytes, bytearray)):
+                    # LINEAJE: runtime guardrail checks `binary` as it flows from the agent to a file, before it is written to disk (in DoclingParser.parse_pdf).
+                    #   Detected: this statement moves data from the agent to a file with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_025; sensitive values in `binary` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:c36321d3f381726f8dd76157e4e954b40a3b5e3322ded5340f1f109576b74135'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c36321d3f381726f8dd76157e4e954b40a3b5e3322ded5340f1f109576b74135', phase='file_write', boundary={'source': 'agent_message', 'sink': 'file_content'}, fail_mode='BLOCK', source_type='agent', destination_type='file', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 304, 'function': 'DoclingParser.parse_pdf'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 304, 'function': 'parse_pdf', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        binary = _gr_client.enforce(_gr_site, binary, content_type='application/json', variable_name='binary', source_file=__file__, before_line=304)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     f.write(binary)
                 else:
-                    f.write(binary.getbuffer())
+                    _lineaje_payload = binary.getbuffer()
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to a file, before it is written to disk (in DoclingParser.parse_pdf).
+                    #   Detected: this statement moves data from the agent to a file with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_025; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:021af61777e99c79a8d4107cdeaafa3cb62d34e13fd947c907a5f02311b5b34c'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:021af61777e99c79a8d4107cdeaafa3cb62d34e13fd947c907a5f02311b5b34c', phase='file_write', boundary={'source': 'agent_message', 'sink': 'file_content'}, fail_mode='BLOCK', source_type='agent', destination_type='file', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 306, 'function': 'DoclingParser.parse_pdf'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 306, 'function': 'parse_pdf', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=306)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    f.write(_lineaje_payload)
             src_path = tmp_pdf
         else:
             src_path = Path(filepath)
@@ -316,7 +429,20 @@ class DoclingParser(RAGFlowPdfParser):
         try:
             self.__images__(str(src_path), zoomin=1)
         except Exception as e:
-            self.logger.warning(f"[Docling] render pages failed: {e}")
+            _lineaje_payload = f"[Docling] render pages failed: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in DoclingParser.parse_pdf).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:dd2bfb15ce8c0b9738b31585373cc626fa4fe72e08c4ed30233c79fcb822b289'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:dd2bfb15ce8c0b9738b31585373cc626fa4fe72e08c4ed30233c79fcb822b289', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/docling_parser.py', 'line': 319, 'function': 'DoclingParser.parse_pdf'}, 'file': 'deepdoc/parser/docling_parser.py', 'line': 319, 'function': 'parse_pdf', 'agent_name': 'DoclingParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            self.logger.warning(_lineaje_payload)
 
         conv = DocumentConverter()  
         conv_res = conv.convert(str(src_path))
