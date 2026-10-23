@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -43,6 +61,18 @@ def transform(data, ops=None):
         data = op(data)
         if data is None:
             return None
+    # LINEAJE: runtime guardrail checks `data` as it flows from the agent to the user interface, before it leaves the application (in transform).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `data` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:b6d4ecb8c8c563112b156d4a8ef408c82e94130bff3caf6bbafb9356fadbd72d'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b6d4ecb8c8c563112b156d4a8ef408c82e94130bff3caf6bbafb9356fadbd72d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 46, 'function': 'transform'}, 'file': 'deepdoc/vision/ocr.py', 'line': 46, 'function': 'transform', 'agent_name': 'transform', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        data = _gr_client.enforce(_gr_site, data, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return data
 
 
@@ -65,6 +95,18 @@ def create_operators(op_param_list, global_config=None):
             param.update(global_config)
         op = getattr(operators, op_name)(**param)
         ops.append(op)
+    # LINEAJE: runtime guardrail checks `ops` as it flows from the agent to the user interface, before it leaves the application (in create_operators).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `ops` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:87c212c0df08e6bcf46f974712c0a6a1d84aa492c8184b1e63661e39840b2859'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:87c212c0df08e6bcf46f974712c0a6a1d84aa492c8184b1e63661e39840b2859', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 68, 'function': 'create_operators'}, 'file': 'deepdoc/vision/ocr.py', 'line': 68, 'function': 'create_operators', 'agent_name': 'create_operators', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        ops = _gr_client.enforce(_gr_site, ops, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return ops
 
 
@@ -75,7 +117,32 @@ def load_model(model_dir, nm, device_id: int | None = None):
     global loaded_models
     loaded_model = loaded_models.get(model_cached_tag)
     if loaded_model:
-        logging.info(f"load_model {model_file_path} reuses cached model")
+        _lineaje_payload = f"load_model {model_file_path} reuses cached model"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in load_model).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a61ad78037d324f867c930c4163e09a80acdf245462a78ea6b09ec9a2cbbac2b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a61ad78037d324f867c930c4163e09a80acdf245462a78ea6b09ec9a2cbbac2b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 78, 'function': 'load_model'}, 'file': 'deepdoc/vision/ocr.py', 'line': 78, 'function': 'load_model', 'agent_name': 'load_model', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
+        # LINEAJE: runtime guardrail checks `loaded_model` as it flows from the agent to the user interface, before it leaves the application (in load_model).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `loaded_model` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:06b50fb16019b81b4a88d8ca13ef4a74d9983193d5b1866f861fdb41e802520a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:06b50fb16019b81b4a88d8ca13ef4a74d9983193d5b1866f861fdb41e802520a', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 79, 'function': 'load_model'}, 'file': 'deepdoc/vision/ocr.py', 'line': 79, 'function': 'load_model', 'agent_name': 'load_model', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            loaded_model = _gr_client.enforce(_gr_site, loaded_model, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return loaded_model
 
     if not os.path.exists(model_file_path):
@@ -117,16 +184,54 @@ def load_model(model_dir, nm, device_id: int | None = None):
             providers=['CUDAExecutionProvider'],
             provider_options=[cuda_provider_options]
             )
-        logging.info(f"load_model {model_file_path} uses GPU (device {provider_device_id}, gpu_mem_limit={cuda_provider_options['gpu_mem_limit']}, arena_strategy={arena_strategy})")
+        _lineaje_payload = f"load_model {model_file_path} uses GPU (device {provider_device_id}, gpu_mem_limit={cuda_provider_options['gpu_mem_limit']}, arena_strategy={arena_strategy})"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in cuda_is_available).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:aa9e0dc75f8734f45383ba8395e39b17968da0673228bf657b5d28ee124fce03'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:aa9e0dc75f8734f45383ba8395e39b17968da0673228bf657b5d28ee124fce03', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 120, 'function': 'load_model'}, 'file': 'deepdoc/vision/ocr.py', 'line': 120, 'function': 'cuda_is_available', 'agent_name': 'cuda_is_available', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     else:
         sess = ort.InferenceSession(
             model_file_path,
             options=options,
             providers=['CPUExecutionProvider'])
         run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu")
-        logging.info(f"load_model {model_file_path} uses CPU")
+        _lineaje_payload = f"load_model {model_file_path} uses CPU"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in cuda_is_available).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b5cdee03f7ef0c179fcc4c6f5f13a687507e84d6b724ab4a9dc3509e772e9241'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b5cdee03f7ef0c179fcc4c6f5f13a687507e84d6b724ab4a9dc3509e772e9241', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 127, 'function': 'load_model'}, 'file': 'deepdoc/vision/ocr.py', 'line': 127, 'function': 'cuda_is_available', 'agent_name': 'cuda_is_available', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
     loaded_model = (sess, run_options)
     loaded_models[model_cached_tag] = loaded_model
+    # LINEAJE: runtime guardrail checks `loaded_model` as it flows from the agent to the user interface, before it leaves the application (in load_model).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `loaded_model` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:438c58bd065c48666e581993eb2c71655c3a9b917a4158c07c8ca53db3ef5fd3'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:438c58bd065c48666e581993eb2c71655c3a9b917a4158c07c8ca53db3ef5fd3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 130, 'function': 'load_model'}, 'file': 'deepdoc/vision/ocr.py', 'line': 130, 'function': 'load_model', 'agent_name': 'load_model', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        loaded_model = _gr_client.enforce(_gr_site, loaded_model, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return loaded_model
 
 
@@ -167,6 +272,18 @@ class TextRecognizer:
         resized_image /= 0.5
         padding_im = np.zeros((imgC, imgH, imgW), dtype=np.float32)
         padding_im[:, :, 0:resized_w] = resized_image
+        # LINEAJE: runtime guardrail checks `padding_im` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.resize_norm_img).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `padding_im` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:acfc25704adc40f1fd2b2b01f69aa0496a4e58a71711da941dae1069640e2c95'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:acfc25704adc40f1fd2b2b01f69aa0496a4e58a71711da941dae1069640e2c95', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 170, 'function': 'TextRecognizer.resize_norm_img'}, 'file': 'deepdoc/vision/ocr.py', 'line': 170, 'function': 'resize_norm_img', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            padding_im = _gr_client.enforce(_gr_site, padding_im, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return padding_im
 
     def resize_norm_img_vl(self, img, image_shape):
@@ -177,6 +294,18 @@ class TextRecognizer:
             img, (imgW, imgH), interpolation=cv2.INTER_LINEAR)
         resized_image = resized_image.astype('float32')
         resized_image = resized_image.transpose((2, 0, 1)) / 255
+        # LINEAJE: runtime guardrail checks `resized_image` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.resize_norm_img_vl).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `resized_image` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:4f643f0497b6c92bf5f37f786138954457e9d096da91afbf5e3aa671b7ec0d4a'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4f643f0497b6c92bf5f37f786138954457e9d096da91afbf5e3aa671b7ec0d4a', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 180, 'function': 'TextRecognizer.resize_norm_img_vl'}, 'file': 'deepdoc/vision/ocr.py', 'line': 180, 'function': 'resize_norm_img_vl', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            resized_image = _gr_client.enforce(_gr_site, resized_image, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return resized_image
 
     def resize_norm_img_srn(self, img, image_shape):
@@ -301,6 +430,18 @@ class TextRecognizer:
         stdinv = 1 / np.float32(std.reshape(1, -1))
         img -= mean
         img *= stdinv
+        # LINEAJE: runtime guardrail checks `img` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.resize_norm_img_spin).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `img` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ec2d6c86697789ea37b1e73f0e04851151040fd6fd50951087d849a1e244c138'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ec2d6c86697789ea37b1e73f0e04851151040fd6fd50951087d849a1e244c138', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 304, 'function': 'TextRecognizer.resize_norm_img_spin'}, 'file': 'deepdoc/vision/ocr.py', 'line': 304, 'function': 'resize_norm_img_spin', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            img = _gr_client.enforce(_gr_site, img, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return img
 
     def resize_norm_img_svtr(self, img, image_shape):
@@ -312,6 +453,18 @@ class TextRecognizer:
         resized_image = resized_image.transpose((2, 0, 1)) / 255
         resized_image -= 0.5
         resized_image /= 0.5
+        # LINEAJE: runtime guardrail checks `resized_image` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.resize_norm_img_svtr).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `resized_image` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:68b021b4c60ab64be877fcc205b131384c1e148b8046c577c6c3c38eee617eef'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:68b021b4c60ab64be877fcc205b131384c1e148b8046c577c6c3c38eee617eef', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 315, 'function': 'TextRecognizer.resize_norm_img_svtr'}, 'file': 'deepdoc/vision/ocr.py', 'line': 315, 'function': 'resize_norm_img_svtr', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            resized_image = _gr_client.enforce(_gr_site, resized_image, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return resized_image
 
     def resize_norm_img_abinet(self, img, image_shape):
@@ -330,6 +483,18 @@ class TextRecognizer:
         resized_image = resized_image.transpose((2, 0, 1))
         resized_image = resized_image.astype('float32')
 
+        # LINEAJE: runtime guardrail checks `resized_image` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.resize_norm_img_abinet).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `resized_image` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:385efcc9ce5848a9144ef26db055bccee14c4217fe7591561bbb427062a3af3e'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:385efcc9ce5848a9144ef26db055bccee14c4217fe7591561bbb427062a3af3e', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 333, 'function': 'TextRecognizer.resize_norm_img_abinet'}, 'file': 'deepdoc/vision/ocr.py', 'line': 333, 'function': 'resize_norm_img_abinet', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            resized_image = _gr_client.enforce(_gr_site, resized_image, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return resized_image
 
     def norm_img_can(self, img, image_shape):
@@ -351,11 +516,36 @@ class TextRecognizer:
         img = np.expand_dims(img, 0) / 255.0  # h,w,c -> c,h,w
         img = img.astype('float32')
 
+        # LINEAJE: runtime guardrail checks `img` as it flows from the agent to the user interface, before it leaves the application (in TextRecognizer.norm_img_can).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `img` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ef824a7b18f829f091f16cdc8cbac447edf4223b3c273b71b5468743654c4c68'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ef824a7b18f829f091f16cdc8cbac447edf4223b3c273b71b5468743654c4c68', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 354, 'function': 'TextRecognizer.norm_img_can'}, 'file': 'deepdoc/vision/ocr.py', 'line': 354, 'function': 'norm_img_can', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            img = _gr_client.enforce(_gr_site, img, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return img
 
     def close(self):
         # close session and release manually
-        logging.info('Close text recognizer.')
+        _lineaje_payload = 'Close text recognizer.'
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TextRecognizer.close).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:98350270e09560396271b0febced675e38bf5c5394305b59f4a07ab6f890157d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:98350270e09560396271b0febced675e38bf5c5394305b59f4a07ab6f890157d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 358, 'function': 'TextRecognizer.close'}, 'file': 'deepdoc/vision/ocr.py', 'line': 358, 'function': 'close', 'agent_name': 'TextRecognizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         if hasattr(self, "predictor"):
             del self.predictor
         gc.collect()
@@ -459,12 +649,36 @@ class TextDetector:
         diff = np.diff(np.array(tmp), axis=1)
         rect[1] = tmp[np.argmin(diff)]
         rect[3] = tmp[np.argmax(diff)]
+        # LINEAJE: runtime guardrail checks `rect` as it flows from the agent to the user interface, before it leaves the application (in TextDetector.order_points_clockwise).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `rect` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:bd04b3b62cf16fe7e39149a9473008b263c4d6f31379f39afc294fc7a1b47e02'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bd04b3b62cf16fe7e39149a9473008b263c4d6f31379f39afc294fc7a1b47e02', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 462, 'function': 'TextDetector.order_points_clockwise'}, 'file': 'deepdoc/vision/ocr.py', 'line': 462, 'function': 'order_points_clockwise', 'agent_name': 'TextDetector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            rect = _gr_client.enforce(_gr_site, rect, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return rect
 
     def clip_det_res(self, points, img_height, img_width):
         for pno in range(points.shape[0]):
             points[pno, 0] = int(min(max(points[pno, 0], 0), img_width - 1))
             points[pno, 1] = int(min(max(points[pno, 1], 0), img_height - 1))
+        # LINEAJE: runtime guardrail checks `points` as it flows from the agent to the user interface, before it leaves the application (in TextDetector.clip_det_res).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `points` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0572a98d9e691f7e486e7ef1108240b7a2deec6bcb35b7791cbdc6b1fde0ceac'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0572a98d9e691f7e486e7ef1108240b7a2deec6bcb35b7791cbdc6b1fde0ceac', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 468, 'function': 'TextDetector.clip_det_res'}, 'file': 'deepdoc/vision/ocr.py', 'line': 468, 'function': 'clip_det_res', 'agent_name': 'TextDetector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            points = _gr_client.enforce(_gr_site, points, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return points
 
     def filter_tag_det_res(self, dt_boxes, image_shape):
@@ -481,6 +695,18 @@ class TextDetector:
                 continue
             dt_boxes_new.append(box)
         dt_boxes = np.array(dt_boxes_new)
+        # LINEAJE: runtime guardrail checks `dt_boxes` as it flows from the agent to the user interface, before it leaves the application (in TextDetector.filter_tag_det_res).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dt_boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f6d9991bad3584c3a392720b4d648a5f64268ce718dc32c41dda9f1e9456d1bc'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f6d9991bad3584c3a392720b4d648a5f64268ce718dc32c41dda9f1e9456d1bc', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 484, 'function': 'TextDetector.filter_tag_det_res'}, 'file': 'deepdoc/vision/ocr.py', 'line': 484, 'function': 'filter_tag_det_res', 'agent_name': 'TextDetector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dt_boxes = _gr_client.enforce(_gr_site, dt_boxes, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dt_boxes
 
     def filter_tag_det_res_only_clip(self, dt_boxes, image_shape):
@@ -492,10 +718,35 @@ class TextDetector:
             box = self.clip_det_res(box, img_height, img_width)
             dt_boxes_new.append(box)
         dt_boxes = np.array(dt_boxes_new)
+        # LINEAJE: runtime guardrail checks `dt_boxes` as it flows from the agent to the user interface, before it leaves the application (in TextDetector.filter_tag_det_res_only_clip).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dt_boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9c0a2157d2c16b1cca8c8af00f4eea61d58febd7070f5b2462b58cd50df9c963'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9c0a2157d2c16b1cca8c8af00f4eea61d58febd7070f5b2462b58cd50df9c963', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 495, 'function': 'TextDetector.filter_tag_det_res_only_clip'}, 'file': 'deepdoc/vision/ocr.py', 'line': 495, 'function': 'filter_tag_det_res_only_clip', 'agent_name': 'TextDetector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dt_boxes = _gr_client.enforce(_gr_site, dt_boxes, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dt_boxes
 
     def close(self):
-        logging.info("Close text detector.")
+        _lineaje_payload = "Close text detector."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in TextDetector.close).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:95fdea72c8d2e23ef6b7a13320f42720c2b65365f3a65301604e559a18203d49'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:95fdea72c8d2e23ef6b7a13320f42720c2b65365f3a65301604e559a18203d49', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 498, 'function': 'TextDetector.close'}, 'file': 'deepdoc/vision/ocr.py', 'line': 498, 'function': 'close', 'agent_name': 'TextDetector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         if hasattr(self, "predictor"):
             del self.predictor
         gc.collect()
@@ -635,6 +886,18 @@ class OCR:
 
             # Use the best image
             dst_img = best_img
+        # LINEAJE: runtime guardrail checks `dst_img` as it flows from the agent to the user interface, before it leaves the application (in OCR.get_rotate_crop_image).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dst_img` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:3df7c5d2a3f08b42cbe70a17fafa8bdd21b22e8d4fb2b81dfd39ff50899e7b6b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3df7c5d2a3f08b42cbe70a17fafa8bdd21b22e8d4fb2b81dfd39ff50899e7b6b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 638, 'function': 'OCR.get_rotate_crop_image'}, 'file': 'deepdoc/vision/ocr.py', 'line': 638, 'function': 'get_rotate_crop_image', 'agent_name': 'OCR', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dst_img = _gr_client.enforce(_gr_site, dst_img, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dst_img
 
     def sorted_boxes(self, dt_boxes):
@@ -658,6 +921,18 @@ class OCR:
                     _boxes[j + 1] = tmp
                 else:
                     break
+        # LINEAJE: runtime guardrail checks `_boxes` as it flows from the agent to the user interface, before it leaves the application (in OCR.sorted_boxes).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `_boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0cdf36f898e7bb2c8fb1b9cab84b151711b6f1c0dad7a04f878ec14826bccc80'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0cdf36f898e7bb2c8fb1b9cab84b151711b6f1c0dad7a04f878ec14826bccc80', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 661, 'function': 'OCR.sorted_boxes'}, 'file': 'deepdoc/vision/ocr.py', 'line': 661, 'function': 'sorted_boxes', 'agent_name': 'OCR', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _boxes = _gr_client.enforce(_gr_site, _boxes, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return _boxes
 
     def detect(self, img, device_id: int | None = None):
@@ -691,6 +966,18 @@ class OCR:
         text, score = rec_res[0]
         if score < self.drop_score:
             return ""
+        # LINEAJE: runtime guardrail checks `text` as it flows from the agent to the user interface, before it leaves the application (in OCR.recognize).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:33add62bbad0ae6b8054457ade5d82d1102ac89ff1af6419c65e619d80a650e4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:33add62bbad0ae6b8054457ade5d82d1102ac89ff1af6419c65e619d80a650e4', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 694, 'function': 'OCR.recognize'}, 'file': 'deepdoc/vision/ocr.py', 'line': 694, 'function': 'recognize', 'agent_name': 'OCR', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            text = _gr_client.enforce(_gr_site, text, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return text
 
     def recognize_batch(self, img_list, device_id: int | None = None):
@@ -703,6 +990,18 @@ class OCR:
             if score < self.drop_score:
                 text = ""
             texts.append(text)
+        # LINEAJE: runtime guardrail checks `texts` as it flows from the agent to the user interface, before it leaves the application (in OCR.recognize_batch).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `texts` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a3a57ef53f2a99652afd2bfcbf727aac6ec3180f5c0ff1e02822f60e806e6084'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a3a57ef53f2a99652afd2bfcbf727aac6ec3180f5c0ff1e02822f60e806e6084', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/ocr.py', 'line': 706, 'function': 'OCR.recognize_batch'}, 'file': 'deepdoc/vision/ocr.py', 'line': 706, 'function': 'recognize_batch', 'agent_name': 'OCR', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            texts = _gr_client.enforce(_gr_site, texts, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return texts
 
     def __call__(self, img, device_id = 0, cls=True):
