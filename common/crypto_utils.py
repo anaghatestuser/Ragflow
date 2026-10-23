@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -99,6 +117,18 @@ class BaseCrypto:
         # Check if data is encrypted by magic header
         if not encrypted_data.startswith(self.ENCRYPTED_MAGIC):
             # Not encrypted, return as-is
+            # LINEAJE: runtime guardrail checks `encrypted_data` as it flows from the agent to the user interface, before it leaves the application (in BaseCrypto.decrypt).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `encrypted_data` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:d4a65f85e69e46a199efec86a768e9fbebf771c0ac66ce33c8d8c05ff77bbf52'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d4a65f85e69e46a199efec86a768e9fbebf771c0ac66ce33c8d8c05ff77bbf52', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/crypto_utils.py', 'line': 102, 'function': 'BaseCrypto.decrypt'}, 'file': 'common/crypto_utils.py', 'line': 102, 'function': 'decrypt', 'agent_name': 'BaseCrypto', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                encrypted_data = _gr_client.enforce(_gr_site, encrypted_data, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return encrypted_data
         
         # Remove magic header
@@ -115,6 +145,18 @@ class BaseCrypto:
         unpadder = padding.PKCS7(self.block_size * 8).unpadder()
         data = unpadder.update(padded_data) + unpadder.finalize()
         
+        # LINEAJE: runtime guardrail checks `data` as it flows from the agent to the user interface, before it leaves the application (in BaseCrypto.decrypt).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `data` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:02c7ee95f35d76a23c48a60901c030b2326b1ce366fe2dda40b4765edc1a39f3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:02c7ee95f35d76a23c48a60901c030b2326b1ce366fe2dda40b4765edc1a39f3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/crypto_utils.py', 'line': 118, 'function': 'BaseCrypto.decrypt'}, 'file': 'common/crypto_utils.py', 'line': 118, 'function': 'decrypt', 'agent_name': 'BaseCrypto', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            data = _gr_client.enforce(_gr_site, data, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return data
     
     def _encrypt(self, padded_data, iv):
@@ -297,6 +339,18 @@ class CryptoUtil:
         encrypted = self.crypto.encrypt(data)
         # end_time = time.time()
         # logging.info(f"Encryption completed, data length: {len(data)} bytes, time: {(end_time - start_time)*1000:.2f} ms")
+        # LINEAJE: runtime guardrail checks `encrypted` as it flows from the agent to the user interface, before it leaves the application (in CryptoUtil.encrypt).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `encrypted` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:46cd70e5c65feaeda3de084936ed5d96b3c69b829ac77dd8f220b70062e65310'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:46cd70e5c65feaeda3de084936ed5d96b3c69b829ac77dd8f220b70062e65310', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/crypto_utils.py', 'line': 300, 'function': 'CryptoUtil.encrypt'}, 'file': 'common/crypto_utils.py', 'line': 300, 'function': 'encrypt', 'agent_name': 'CryptoUtil', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            encrypted = _gr_client.enforce(_gr_site, encrypted, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return encrypted
     
     def decrypt(self, encrypted_data):
@@ -314,6 +368,18 @@ class CryptoUtil:
         decrypted = self.crypto.decrypt(encrypted_data)
         # end_time = time.time()
         # logging.info(f"Decryption completed, data length: {len(encrypted_data)} bytes, time: {(end_time - start_time)*1000:.2f} ms")
+        # LINEAJE: runtime guardrail checks `decrypted` as it flows from the agent to the user interface, before it leaves the application (in CryptoUtil.decrypt).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `decrypted` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:43e03a89eafbe2b3c49bfbc911878a5a613b009a958e9b57ef047d3dc2af9de9'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:43e03a89eafbe2b3c49bfbc911878a5a613b009a958e9b57ef047d3dc2af9de9', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/crypto_utils.py', 'line': 317, 'function': 'CryptoUtil.decrypt'}, 'file': 'common/crypto_utils.py', 'line': 317, 'function': 'decrypt', 'agent_name': 'CryptoUtil', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            decrypted = _gr_client.enforce(_gr_site, decrypted, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return decrypted
 
 
