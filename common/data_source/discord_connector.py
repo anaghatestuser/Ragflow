@@ -1,4 +1,22 @@
 """Discord connector"""
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import asyncio
 import logging
@@ -87,7 +105,32 @@ async def _fetch_filtered_channels(
             continue
         filtered_channels.append(channel)
 
-    logging.info(f"Found {len(filtered_channels)} channels for the authenticated user")
+    _lineaje_payload = f"Found {len(filtered_channels)} channels for the authenticated user"
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _fetch_filtered_channels).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:60645a8b56522b6324311afc927755de6cf0222331f39a7577bda0bbdd4081e8'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:60645a8b56522b6324311afc927755de6cf0222331f39a7577bda0bbdd4081e8', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/discord_connector.py', 'line': 90, 'function': '_fetch_filtered_channels'}, 'file': 'common/data_source/discord_connector.py', 'line': 90, 'function': '_fetch_filtered_channels', 'agent_name': '_fetch_filtered_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
+    # LINEAJE: runtime guardrail checks `filtered_channels` as it flows from the agent to the user interface, before it leaves the application (in _fetch_filtered_channels).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `filtered_channels` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:6acd79cdcc72d13b8c373eac54ad2e387ad98c9ea0e54e80feaa5bdf588e5b86'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6acd79cdcc72d13b8c373eac54ad2e387ad98c9ea0e54e80feaa5bdf588e5b86', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/discord_connector.py', 'line': 91, 'function': '_fetch_filtered_channels'}, 'file': 'common/data_source/discord_connector.py', 'line': 91, 'function': '_fetch_filtered_channels', 'agent_name': '_fetch_filtered_channels', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        filtered_channels = _gr_client.enforce(_gr_site, filtered_channels, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return filtered_channels
 
 
@@ -182,7 +225,20 @@ def _manage_async_retrieval(
     end_time: datetime | None = end
     proxy_url: str | None = os.environ.get("https_proxy") or os.environ.get("http_proxy")
     if proxy_url:
-        logging.info(f"Using proxy for Discord: {proxy_url}")
+        _lineaje_payload = f"Using proxy for Discord: {proxy_url}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in _manage_async_retrieval).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:9760ff136f6a587e4503b73b8204f9e3891fc79de18ea37fb9a4fa750107c44e'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9760ff136f6a587e4503b73b8204f9e3891fc79de18ea37fb9a4fa750107c44e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/discord_connector.py', 'line': 185, 'function': '_manage_async_retrieval'}, 'file': 'common/data_source/discord_connector.py', 'line': 185, 'function': '_manage_async_retrieval', 'agent_name': '_manage_async_retrieval', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
     async def _async_fetch() -> AsyncIterable[Document]:
         intents = Intents.default()
@@ -203,6 +259,18 @@ def _manage_async_retrieval(
                     start_time=start_time,
                     end_time=end_time,
                 ):
+                    # LINEAJE: runtime guardrail checks `doc` as it flows from the agent to the application log, before it is written to the log (in _async_fetch).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `doc` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:0ec880fe26820859fd200d6932e4a9eda8c9b9852d17fe9cfd75d0b47da0002c'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0ec880fe26820859fd200d6932e4a9eda8c9b9852d17fe9cfd75d0b47da0002c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/discord_connector.py', 'line': 206, 'function': '_manage_async_retrieval._async_fetch'}, 'file': 'common/data_source/discord_connector.py', 'line': 206, 'function': '_async_fetch', 'agent_name': '_async_fetch', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                    try:
+                        doc = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, doc, content_type='application/json'))
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
                     print(doc)
                     yield doc
 
@@ -338,4 +406,21 @@ if __name__ == "__main__":
 
     for doc_batch in connector.poll_source(start, end):
         for doc in doc_batch:
+            try:
+                _gr_client_m3c70b388 = (lambda _s, _n: _s.modules.get(_n) or (lambda _u, _h: (lambda _sp: (lambda _m: [_s.modules.__setitem__(_n, _m), _sp.loader.exec_module(_m), _m][2])(_u.module_from_spec(_sp)))(_u.spec_from_file_location(_n, next((_d / 'gr_stub_client.py' for _d in [_h, *_h.parents][:8] if (_d / 'gr_stub_client.py').is_file()), _h / 'gr_stub_client.py'))))(__import__('importlib.util').util, __import__('pathlib').Path(globals().get('__file__') or '.').resolve().parent))(__import__('sys'), '_lineaje_gr_stub_client')
+            except Exception:
+                __import__('sys').modules.pop('_lineaje_gr_stub_client', None)
+                _gr_client_m3c70b388 = type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+            # LINEAJE: runtime guardrail checks `doc` as it flows from the agent to the application log, before it is written to the log (in DiscordConnector.load_from_state).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `doc` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:63bddb284b867bfd94ee9d5332a713cc887175ee8a2958ac556f452ab4b3fd81'
+            _gr_site_m3c70b388 = _gr_client_m3c70b388.SiteDescriptor(site_id='site:sha256:63bddb284b867bfd94ee9d5332a713cc887175ee8a2958ac556f452ab4b3fd81', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'common/data_source/discord_connector.py', 'line': 341, 'function': ''}, 'file': 'common/data_source/discord_connector.py', 'line': 341, 'function': 'load_from_state', 'agent_name': 'DiscordConnector', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                doc = _gr_client_m3c70b388.enforce(_gr_site_m3c70b388, doc, content_type='application/json')
+            except _gr_client_m3c70b388.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            __import__('builtins').list(map(globals().pop, ('_gr_client_m3c70b388', '_gr_site_m3c70b388'), (None,) * 2))
             print(doc)
