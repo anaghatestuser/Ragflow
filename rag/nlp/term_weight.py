@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
     #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -61,6 +79,18 @@ class Dealer:
         def load_dict(fnm):
             res = {}
             f = open(fnm, "r")
+            # LINEAJE: runtime guardrail checks `f` as it flows from file storage to the agent (in Dealer.load_dict).
+            #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `f` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3a73e525bd1704c2198b8a0cae9cfdd985b91f6db6885a91d486c6304a221efc'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3a73e525bd1704c2198b8a0cae9cfdd985b91f6db6885a91d486c6304a221efc', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 63, 'function': 'Dealer.__init__.load_dict'}, 'file': 'rag/nlp/term_weight.py', 'line': 63, 'function': 'load_dict', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                f = _gr_client.enforce(_gr_site, f, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                raise
             while True:
                 line = f.readline()
                 if not line:
@@ -76,6 +106,18 @@ class Dealer:
                 c += v
             if c == 0:
                 return set(res.keys())
+            # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in Dealer.load_dict).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:c2cc0cdbd072a7124d42f40f7b5e5516f7adbb9b73d073fedc00125d1aa3b8f7'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c2cc0cdbd072a7124d42f40f7b5e5516f7adbb9b73d073fedc00125d1aa3b8f7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 79, 'function': 'Dealer.__init__.load_dict'}, 'file': 'rag/nlp/term_weight.py', 'line': 79, 'function': 'load_dict', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return res
 
         fnm = os.path.join(get_project_base_directory(), "rag/res")
@@ -83,11 +125,37 @@ class Dealer:
         try:
             self.ne = json.load(open(os.path.join(fnm, "ner.json"), "r"))
         except Exception:
-            logging.warning("Load ner.json FAIL!")
+            _lineaje_payload = "Load ner.json FAIL!"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Dealer.load_dict).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:83f4fd3d865ecbbdd91a94822da2839768f172d53b950c723c3bc222358a0d04'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:83f4fd3d865ecbbdd91a94822da2839768f172d53b950c723c3bc222358a0d04', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 86, 'function': 'Dealer.__init__'}, 'file': 'rag/nlp/term_weight.py', 'line': 86, 'function': 'load_dict', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
         try:
             self.df = load_dict(os.path.join(fnm, "term.freq"))
         except Exception:
-            logging.warning("Load term.freq FAIL!")
+            _lineaje_payload = "Load term.freq FAIL!"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Dealer.load_dict).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:4fb0f979f5dfbfe979020e86b7fceffec59079bd447b9c13cc115c8c10bbf8ef'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4fb0f979f5dfbfe979020e86b7fceffec59079bd447b9c13cc115c8c10bbf8ef', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 90, 'function': 'Dealer.__init__'}, 'file': 'rag/nlp/term_weight.py', 'line': 90, 'function': 'load_dict', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
     def pretoken(self, txt, num=False, stpwd=True):
         patt = [
@@ -111,6 +179,18 @@ class Dealer:
             #tk = re.sub(r"([\+\\-])", r"\\\1", tk)
             if tk != "#" and tk:
                 res.append(tk)
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in Dealer.pretoken).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:bcf1d3793cf387f474e7aed221249246e5aa12e48994e771e79bebc917ee3a3c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bcf1d3793cf387f474e7aed221249246e5aa12e48994e771e79bebc917ee3a3c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 114, 'function': 'Dealer.pretoken'}, 'file': 'rag/nlp/term_weight.py', 'line': 114, 'function': 'pretoken', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     def token_merge(self, tks):
@@ -146,6 +226,18 @@ class Dealer:
             return ""
         res = self.ne.get(t, "")
         if res:
+            # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in Dealer.ner).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:84eef36411f9d513989bda298969d1fdfc2621dbe9fefa3a63b268e5669927ba'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:84eef36411f9d513989bda298969d1fdfc2621dbe9fefa3a63b268e5669927ba', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 149, 'function': 'Dealer.ner'}, 'file': 'rag/nlp/term_weight.py', 'line': 149, 'function': 'ner', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return res
 
     def split(self, txt):
@@ -157,6 +249,18 @@ class Dealer:
                 tks[-1] = tks[-1] + " " + t
             else:
                 tks.append(t)
+        # LINEAJE: runtime guardrail checks `tks` as it flows from the agent to the user interface, before it leaves the application (in Dealer.split).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `tks` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:cd9976e5a2656191c679c91746b98f748002f133ff82de7082629376519cb1e3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cd9976e5a2656191c679c91746b98f748002f133ff82de7082629376519cb1e3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/nlp/term_weight.py', 'line': 160, 'function': 'Dealer.split'}, 'file': 'rag/nlp/term_weight.py', 'line': 160, 'function': 'split', 'agent_name': 'Dealer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            tks = _gr_client.enforce(_gr_site, tks, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return tks
 
     def weights(self, tks, preprocess=True):
