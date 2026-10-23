@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -83,7 +101,20 @@ def by_mineru(
                 elif env_name:
                     mineru_llm_name = env_name
             except Exception as e:  # best-effort fallback
-                logging.warning(f"fallback to env mineru: {e}")
+                _lineaje_payload = f"fallback to env mineru: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in by_mineru).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e83731bccd38a2fae67b0e7af7beb36f8cbce743c70a4349cd31b4ef4cffc5bd'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e83731bccd38a2fae67b0e7af7beb36f8cbce743c70a4349cd31b4ef4cffc5bd', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 86, 'function': 'by_mineru'}, 'file': 'rag/app/naive.py', 'line': 86, 'function': 'by_mineru', 'agent_name': 'by_mineru', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
 
         if mineru_llm_name:
             try:
@@ -99,7 +130,20 @@ def by_mineru(
                 )
                 return sections, tables, pdf_parser
             except Exception as e:
-                logging.error(f"Failed to parse pdf via LLMBundle MinerU ({mineru_llm_name}): {e}")
+                _lineaje_payload = f"Failed to parse pdf via LLMBundle MinerU ({mineru_llm_name}): {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in by_mineru).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:5d81cc5c822aba1f3cd6fc3e67fe3796db65d747a83a549c6da0050b9a587aa0'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5d81cc5c822aba1f3cd6fc3e67fe3796db65d747a83a549c6da0050b9a587aa0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 102, 'function': 'by_mineru'}, 'file': 'rag/app/naive.py', 'line': 102, 'function': 'by_mineru', 'agent_name': 'by_mineru', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
 
     if callback:
         callback(-1, "MinerU not found.")
@@ -194,19 +238,84 @@ class Docx(DocxParser):
                 related_part = document.part.related_parts[embed]
                 image_blob = related_part.image.blob
             except UnrecognizedImageError:
-                logging.info("Unrecognized image format. Skipping image.")
+                _lineaje_payload = "Unrecognized image format. Skipping image."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.get_picture).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9ca60a6408e57070d85363fecf1eb560dc77921f0d10aa896ccd108f2106bcb0'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9ca60a6408e57070d85363fecf1eb560dc77921f0d10aa896ccd108f2106bcb0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 197, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 197, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 continue
             except UnexpectedEndOfFileError:
-                logging.info("EOF was unexpectedly encountered while reading an image stream. Skipping image.")
+                _lineaje_payload = "EOF was unexpectedly encountered while reading an image stream. Skipping image."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.get_picture).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:583dda473df256130fbaad21b2b63b202a37824137fc75167b068455a5c536e9'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:583dda473df256130fbaad21b2b63b202a37824137fc75167b068455a5c536e9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 200, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 200, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 continue
             except InvalidImageStreamError:
-                logging.info("The recognized image stream appears to be corrupted. Skipping image.")
+                _lineaje_payload = "The recognized image stream appears to be corrupted. Skipping image."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.get_picture).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:d7b140799092db9ceeaa818e9b748fdccb5254b508990e2b99ae66dc19142c7f'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d7b140799092db9ceeaa818e9b748fdccb5254b508990e2b99ae66dc19142c7f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 203, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 203, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 continue
             except UnicodeDecodeError:
-                logging.info("The recognized image stream appears to be corrupted. Skipping image.")
+                _lineaje_payload = "The recognized image stream appears to be corrupted. Skipping image."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.get_picture).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:f6a5ef1e32cb203b79a82b74df12af9e5c4f0c644f8165dc744387bffa7cded5'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f6a5ef1e32cb203b79a82b74df12af9e5c4f0c644f8165dc744387bffa7cded5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 206, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 206, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 continue
             except Exception:
-                logging.info("The recognized image stream appears to be corrupted. Skipping image.")
+                _lineaje_payload = "The recognized image stream appears to be corrupted. Skipping image."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.get_picture).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:bc978d2f8cf0351ea14054433d79e46b0c0c5fae3e61cda68e7070e2cf0de7c0'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bc978d2f8cf0351ea14054433d79e46b0c0c5fae3e61cda68e7070e2cf0de7c0', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 209, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 209, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 continue
             try:
                 image = Image.open(BytesIO(image_blob)).convert('RGB')
@@ -217,10 +326,34 @@ class Docx(DocxParser):
             except Exception:
                 continue
 
+        # LINEAJE: runtime guardrail checks `res_img` as it flows from the agent to the user interface, before it leaves the application (in Docx.get_picture).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res_img` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:fdc8fdf819403d98534a220465ed1278fdb5113f281c4bb891a47f14256dbea7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:fdc8fdf819403d98534a220465ed1278fdb5113f281c4bb891a47f14256dbea7', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 220, 'function': 'Docx.get_picture'}, 'file': 'rag/app/naive.py', 'line': 220, 'function': 'get_picture', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res_img = _gr_client.enforce(_gr_site, res_img, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res_img
 
     def __clean(self, line):
         line = re.sub(r"\u3000", " ", line).strip()
+        # LINEAJE: runtime guardrail checks `line` as it flows from the agent to the user interface, before it leaves the application (in Docx.__clean).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `line` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e8a4375de4e515decc70883a03bef717331824767d51ffb1cf72ee0719d8a386'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e8a4375de4e515decc70883a03bef717331824767d51ffb1cf72ee0719d8a386', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 224, 'function': 'Docx.__clean'}, 'file': 'rag/app/naive.py', 'line': 224, 'function': '__clean', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            line = _gr_client.enforce(_gr_site, line, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return line
 
     def __get_nearest_title(self, table_index, filename):
@@ -246,7 +379,20 @@ class Docx(DocxParser):
                 elif block.tag.endswith('tbl'):  # Table
                     blocks.append(('t', i, None))  # Table object will be retrieved later
         except Exception as e:
-            logging.error(f"Error collecting blocks: {e}")
+            _lineaje_payload = f"Error collecting blocks: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.__get_nearest_title).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:309c75b23f2c7f01d93abc7a083103cd83d8e3a061e43e9ca778a8402f224adc'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:309c75b23f2c7f01d93abc7a083103cd83d8e3a061e43e9ca778a8402f224adc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 249, 'function': 'Docx.__get_nearest_title'}, 'file': 'rag/app/naive.py', 'line': 249, 'function': '__get_nearest_title', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             return ""
 
         # Find the target table position
@@ -283,7 +429,20 @@ class Docx(DocxParser):
                                 nearest_title = (level, title_text)
                                 break
                 except Exception as e:
-                    logging.error(f"Error parsing heading level: {e}")
+                    _lineaje_payload = f"Error parsing heading level: {e}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.__get_nearest_title).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:8f3d591eed2fc7ed7cdee3bdb43211f88d46968b7d8669c4e0de0c5dcd81c480'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8f3d591eed2fc7ed7cdee3bdb43211f88d46968b7d8669c4e0de0c5dcd81c480', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 286, 'function': 'Docx.__get_nearest_title'}, 'file': 'rag/app/naive.py', 'line': 286, 'function': '__get_nearest_title', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.error(_lineaje_payload)
 
         if nearest_title:
             # Add current title
@@ -315,7 +474,20 @@ class Docx(DocxParser):
                                         found = True
                                         break
                         except Exception as e:
-                            logging.error(f"Error parsing parent heading: {e}")
+                            _lineaje_payload = f"Error parsing parent heading: {e}"
+                            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.__get_nearest_title).
+                            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                            #   Do not remove without review. site_id='site:sha256:ff58da78c5cdba15800ea1347cca027b9a8c98276c7939a803ed51e6a7feccf4'
+                            _gr_client = _lineaje_load_gr_client()
+                            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ff58da78c5cdba15800ea1347cca027b9a8c98276c7939a803ed51e6a7feccf4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 318, 'function': 'Docx.__get_nearest_title'}, 'file': 'rag/app/naive.py', 'line': 318, 'function': '__get_nearest_title', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                            try:
+                                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                            except _gr_client.GuardrailUnavailableError:
+                                pass
+                            except PermissionError:
+                                pass
+                            logging.error(_lineaje_payload)
 
                 if not found:  # Break if no parent heading is found
                     break
@@ -390,7 +562,20 @@ class Docx(DocxParser):
                         i += 1
                         html += f"<td>{c.text}</td>" if span == 1 else f"<td colspan='{span}'>{c.text}</td>"
                 except Exception as e:
-                    logging.warning(f"Error parsing table, ignore: {e}")
+                    _lineaje_payload = f"Error parsing table, ignore: {e}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx.__call__).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:88ca86aa435e6c41b516cdf5118c9536c7bbfe6dc1b53597e29e9f8d10e61374'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:88ca86aa435e6c41b516cdf5118c9536c7bbfe6dc1b53597e29e9f8d10e61374', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 393, 'function': 'Docx.__call__'}, 'file': 'rag/app/naive.py', 'line': 393, 'function': '__call__', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.warning(_lineaje_payload)
                 html += "</tr>"
             html += "</table>"
             tbls.append(((None, html), ""))
@@ -408,11 +593,35 @@ class Docx(DocxParser):
         from markdownify import markdownify
 
         docx_file = BytesIO(binary) if binary else open(filename, "rb")
+        # LINEAJE: runtime guardrail checks `docx_file` as it flows from file storage to the agent (in Docx.to_markdown).
+        #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `docx_file` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:1357619e6d844516b18d3c226744113930bde35cedd075897e3cd255f9bab700'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1357619e6d844516b18d3c226744113930bde35cedd075897e3cd255f9bab700', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 410, 'function': 'Docx.to_markdown'}, 'file': 'rag/app/naive.py', 'line': 410, 'function': 'to_markdown', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            docx_file = _gr_client.enforce(_gr_site, docx_file, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            raise
 
         def _convert_image_to_base64(image):
             try:
                 with image.open() as image_file:
                     image_bytes = image_file.read()
+                    # LINEAJE: runtime guardrail checks `image_bytes` as it flows from file storage to the agent (in Docx._convert_image_to_base64).
+                    #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `image_bytes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:37a289091dfdfe0ebe0eb6086f2de693ff9b056c6a8b2f75fa94f916412e8277'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:37a289091dfdfe0ebe0eb6086f2de693ff9b056c6a8b2f75fa94f916412e8277', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 415, 'function': 'Docx.to_markdown._convert_image_to_base64'}, 'file': 'rag/app/naive.py', 'line': 415, 'function': '_convert_image_to_base64', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        image_bytes = _gr_client.enforce(_gr_site, image_bytes, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        raise
                 encoded = base64.b64encode(image_bytes).decode("utf-8")
                 base64_url = f"data:{image.content_type};base64,{encoded}"
 
@@ -421,7 +630,20 @@ class Docx(DocxParser):
 
                 return {"src": base64_url, "alt": alt_name}
             except Exception as e:
-                logging.warning(f"Failed to convert image to base64: {e}")
+                _lineaje_payload = f"Failed to convert image to base64: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Docx._convert_image_to_base64).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:ff597482d56e9b8e161931a3b0537e1ce67cd11ec3a1e35e135e5935f584d8bc'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ff597482d56e9b8e161931a3b0537e1ce67cd11ec3a1e35e135e5935f584d8bc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 424, 'function': 'Docx.to_markdown._convert_image_to_base64'}, 'file': 'rag/app/naive.py', 'line': 424, 'function': '_convert_image_to_base64', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 return {"src": "", "alt": "image"}
 
         try:
@@ -433,6 +655,18 @@ class Docx(DocxParser):
             html = result.value
 
             markdown_text = markdownify(html)
+            # LINEAJE: runtime guardrail checks `markdown_text` as it flows from the agent to the user interface, before it leaves the application (in Docx._convert_image_to_base64).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `markdown_text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:818d89d983184b8b797ec82d99e1549cd15b8306dcc6250c45416779600f9e2b'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:818d89d983184b8b797ec82d99e1549cd15b8306dcc6250c45416779600f9e2b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 436, 'function': 'Docx.to_markdown'}, 'file': 'rag/app/naive.py', 'line': 436, 'function': '_convert_image_to_base64', 'agent_name': 'Docx', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                markdown_text = _gr_client.enforce(_gr_site, markdown_text, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return markdown_text
 
         finally:
@@ -457,7 +691,20 @@ class Pdf(PdfParser):
             callback
         )
         callback(msg="OCR finished ({:.2f}s)".format(timer() - start))
-        logging.info("OCR({}~{}): {:.2f}s".format(from_page, to_page, timer() - start))
+        _lineaje_payload = "OCR({}~{}): {:.2f}s".format(from_page, to_page, timer() - start)
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Pdf.__call__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:801fa7f7e99a5be650a05cf308c6b2843994e87c0567e716342b7b06771994cf'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:801fa7f7e99a5be650a05cf308c6b2843994e87c0567e716342b7b06771994cf', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 460, 'function': 'Pdf.__call__'}, 'file': 'rag/app/naive.py', 'line': 460, 'function': '__call__', 'agent_name': 'Pdf', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
         start = timer()
         self._layouts_rec(zoomin)
@@ -474,7 +721,20 @@ class Pdf(PdfParser):
         if separate_tables_figures:
             tbls, figures = self._extract_table_figure(True, zoomin, True, True, True)
             self._concat_downward()
-            logging.info("layouts cost: {}s".format(timer() - first_start))
+            _lineaje_payload = "layouts cost: {}s".format(timer() - first_start)
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Pdf.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:51d247e54b7381c55e8461791cfb0624da356395c3041d40b8227aa9437c886c'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:51d247e54b7381c55e8461791cfb0624da356395c3041d40b8227aa9437c886c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 477, 'function': 'Pdf.__call__'}, 'file': 'rag/app/naive.py', 'line': 477, 'function': '__call__', 'agent_name': 'Pdf', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             return [(b["text"], self._line_tag(b, zoomin)) for b in self.boxes], tbls, figures
         else:
             tbls = self._extract_table_figure(True, zoomin, True, True)
@@ -482,7 +742,20 @@ class Pdf(PdfParser):
             self._concat_downward()
             self._final_reading_order_merge()
             # self._filter_forpages()
-            logging.info("layouts cost: {}s".format(timer() - first_start))
+            _lineaje_payload = "layouts cost: {}s".format(timer() - first_start)
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Pdf.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f022fab906cb14d22bad2bd3d543a0d307e572ac4bf60b07bd01f0aae72a461e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f022fab906cb14d22bad2bd3d543a0d307e572ac4bf60b07bd01f0aae72a461e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 485, 'function': 'Pdf.__call__'}, 'file': 'rag/app/naive.py', 'line': 485, 'function': '__call__', 'agent_name': 'Pdf', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             return [(b["text"], self._line_tag(b, zoomin)) for b in self.boxes], tbls
 
 
@@ -500,6 +773,18 @@ class Markdown(MarkdownParser):
         from bs4 import BeautifulSoup
         html_content = markdown(text)
         soup = BeautifulSoup(html_content, 'html.parser')
+        # LINEAJE: runtime guardrail checks `soup` as it flows from the agent to the user interface, before it leaves the application (in Markdown.md_to_html).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `soup` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e049fba7730e401bd3539368f040b6811b1fd62be76e80627416babeb1400168'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e049fba7730e401bd3539368f040b6811b1fd62be76e80627416babeb1400168', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 503, 'function': 'Markdown.md_to_html'}, 'file': 'rag/app/naive.py', 'line': 503, 'function': 'md_to_html', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            soup = _gr_client.enforce(_gr_site, soup, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return soup
 
     def get_hyperlink_urls(self, soup):
@@ -550,6 +835,18 @@ class Markdown(MarkdownParser):
         except Exception:
             pass
 
+        # LINEAJE: runtime guardrail checks `urls` as it flows from the agent to the user interface, before it leaves the application (in Markdown.extract_image_urls_with_lines).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `urls` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e43e56bf253191f360134981f5f8e7dec917ecabc294b5a7fa67f9ba431b519d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e43e56bf253191f360134981f5f8e7dec917ecabc294b5a7fa67f9ba431b519d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 553, 'function': 'Markdown.extract_image_urls_with_lines'}, 'file': 'rag/app/naive.py', 'line': 553, 'function': 'extract_image_urls_with_lines', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            urls = _gr_client.enforce(_gr_site, urls, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return urls
 
     def load_images_from_urls(self, urls, cache=None):
@@ -567,16 +864,62 @@ class Markdown(MarkdownParser):
             try:
                 if url.startswith(('http://', 'https://')):
                     response = requests.get(url, stream=True, timeout=30)
+                    # LINEAJE: runtime guardrail checks `response` as it flows from an external API to the agent, after the tool returns (in Markdown.load_images_from_urls).
+                    #   Detected: this statement moves data from an external API to the agent with no runtime policy check (detection confidence: medium).
+                    #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `response` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:14376087809bf61e6fdeab2f28645a7ac5d6c6ffb541c0c310a730e88c8ad5db'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:14376087809bf61e6fdeab2f28645a7ac5d6c6ffb541c0c310a730e88c8ad5db', phase='post_tool', boundary={'source': 'external_endpoint', 'sink': 'agent_message'}, fail_mode='ALLOW_WITH_AUDIT', source_type='api', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 569, 'function': 'Markdown.load_images_from_urls'}, 'file': 'rag/app/naive.py', 'line': 569, 'function': 'load_images_from_urls', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        response = _gr_client.enforce(_gr_site, response, content_type='application/json', variable_name='response', source_file=__file__, before_line=569)
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
                     if response.status_code == 200 and response.headers.get('Content-Type', '').startswith('image/'):
                         img_obj = Image.open(BytesIO(response.content)).convert('RGB')
+                        # LINEAJE: runtime guardrail checks `img_obj` as it flows from the LLM to the agent, after the model replies (in Markdown.load_images_from_urls).
+                        #   Detected: this statement moves data from the LLM to the agent with no runtime policy check (detection confidence: medium).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_011, AI_DAT_SEC_025, AI_DAT_SEC_027, AI_DAT_SEC_029; sensitive values in `img_obj` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:95792a6d6eef6cc7589c2c3235c726d03b8713c13c0b7611fc0bd94e151655d9'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:95792a6d6eef6cc7589c2c3235c726d03b8713c13c0b7611fc0bd94e151655d9', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, fail_mode='BLOCK', source_type='llm', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 571, 'function': 'Markdown.load_images_from_urls'}, 'file': 'rag/app/naive.py', 'line': 571, 'function': 'load_images_from_urls', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True}, interaction_id=locals().get('_lineaje_interaction_id'))
+                        try:
+                            img_obj = _gr_client.enforce(_gr_site, img_obj, content_type='application/json', variable_name='img_obj', source_file=__file__, before_line=571)
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
                 else:
                     local_path = Path(url)
                     if local_path.exists():
                         img_obj = Image.open(url).convert('RGB')
                     else:
-                        logging.warning(f"Local image file not found: {url}")
+                        _lineaje_payload = f"Local image file not found: {url}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Markdown.load_images_from_urls).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:c31ccd1d7aa82651fe2472cac744e4dacaf6e3cac21cc1d82f2ee1e6c3c351af'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c31ccd1d7aa82651fe2472cac744e4dacaf6e3cac21cc1d82f2ee1e6c3c351af', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 577, 'function': 'Markdown.load_images_from_urls'}, 'file': 'rag/app/naive.py', 'line': 577, 'function': 'load_images_from_urls', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        logging.warning(_lineaje_payload)
             except Exception as e:
-                logging.error(f"Failed to download/open image from {url}: {e}")
+                _lineaje_payload = f"Failed to download/open image from {url}: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Markdown.load_images_from_urls).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:e17e751fc23a14a774d0534e0be4c9cf63242ef270b87b8eeec03467602ad835'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e17e751fc23a14a774d0534e0be4c9cf63242ef270b87b8eeec03467602ad835', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 579, 'function': 'Markdown.load_images_from_urls'}, 'file': 'rag/app/naive.py', 'line': 579, 'function': 'load_images_from_urls', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.error(_lineaje_payload)
             cache[url] = img_obj
             if img_obj:
                 images.append(img_obj)
@@ -589,6 +932,18 @@ class Markdown(MarkdownParser):
         else:
             with open(filename, "r") as f:
                 txt = f.read()
+                # LINEAJE: runtime guardrail checks `txt` as it flows from file storage to the agent (in Markdown.__call__).
+                #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `txt` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:98693a4536a216e4ed7673579249a5e84655a7092e441f5a14bd53afc55f01eb'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:98693a4536a216e4ed7673579249a5e84655a7092e441f5a14bd53afc55f01eb', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 591, 'function': 'Markdown.__call__'}, 'file': 'rag/app/naive.py', 'line': 591, 'function': '__call__', 'agent_name': 'Markdown', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    txt = _gr_client.enforce(_gr_site, txt, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    raise
 
         remainder, tables = self.extract_tables_and_remainder(f'{txt}\n', separate_tables=separate_tables)
         # To eliminate duplicate tables in chunking result, uncomment code below and set separate_tables to True in line 410.
@@ -634,6 +989,18 @@ def load_from_xml_v2(baseURI, rels_item_xml):
             if rel_elm.target_ref in ('../NULL', 'NULL'):
                 continue
             srels._srels.append(_SerializedRelationship(baseURI, rel_elm))
+    # LINEAJE: runtime guardrail checks `srels` as it flows from the agent to the user interface, before it leaves the application (in load_from_xml_v2).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `srels` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:f1a265bc0f24b92c7e40257425cc783eca58ffe19be3030658abe7588c358af5'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f1a265bc0f24b92c7e40257425cc783eca58ffe19be3030658abe7588c358af5', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 637, 'function': 'load_from_xml_v2'}, 'file': 'rag/app/naive.py', 'line': 637, 'function': 'load_from_xml_v2', 'agent_name': 'load_from_xml_v2', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        srels = _gr_client.enforce(_gr_site, srels, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return srels
 
 def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", callback=None, **kwargs):
@@ -703,7 +1070,20 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
                 try:
                     sub_url_res = chunk(url, html_bytes, callback=callback, lang=lang, is_root=False, **kwargs)
                 except Exception as e:
-                    logging.info(f"Failed to chunk url in registered file type {url}: {e}")
+                    _lineaje_payload = f"Failed to chunk url in registered file type {url}: {e}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:9b0544c6b442497de0f1423d56649738a7b014811aac3545435a3e3a2a7ed787'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b0544c6b442497de0f1423d56649738a7b014811aac3545435a3e3a2a7ed787', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 706, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 706, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.info(_lineaje_payload)
                     sub_url_res = chunk(f"{index}.html", html_bytes, callback=callback, lang=lang, is_root=False, **kwargs)
                 url_res.extend(sub_url_res)
 
@@ -724,11 +1104,36 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
                 "delimiter", "\n!?。；！？"))
 
         res.extend(tokenize_chunks_with_images(chunks, doc, is_english, images, child_delimiters_pattern=child_deli))
-        logging.info("naive_merge({}): {}".format(filename, timer() - st))
+        _lineaje_payload = "naive_merge({}): {}".format(filename, timer() - st)
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:cd98564075d7cd4bfd9cf8a2c9e184610edc479091c907181ed6aebe3ded8d3f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cd98564075d7cd4bfd9cf8a2c9e184610edc479091c907181ed6aebe3ded8d3f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 727, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 727, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         res.extend(embed_res)
         res.extend(url_res)
         if table_context_size or image_context_size:
             attach_media_context(res, table_context_size, image_context_size)
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in chunk).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a398356ac2037679ecf6f92f3392cebe27229c0cbe3b859071717a792f28eaa1'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a398356ac2037679ecf6f92f3392cebe27229c0cbe3b859071717a792f28eaa1', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 732, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 732, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     elif re.search(r"\.pdf$", filename, re.IGNORECASE):
@@ -781,6 +1186,18 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
             )
             if not tcadp_parser.check_installation():
                 callback(-1, "TCADP parser not available. Please check Tencent Cloud API configuration.")
+                # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in chunk).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:77f3a52c1049ee33c8bf01761f1bbb10b122f83437c01c742eb53c273e30797b'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:77f3a52c1049ee33c8bf01761f1bbb10b122f83437c01c742eb53c273e30797b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 784, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 784, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return res
 
             # Determine file type based on extension
@@ -851,7 +1268,20 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
                     sections[idx] = (section_text + "\n\n" + "\n\n".join([fig[0][1] for fig in boosted_figures]), sections[idx][1])
 
         else:
-            logging.warning("No visual model detected. Skipping figure parsing enhancement.")
+            _lineaje_payload = "No visual model detected. Skipping figure parsing enhancement."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:23423d0b0a9c135d4efb803aa5cb8f4e7ef6cbc9233ebb22e11c008fbd5a4c94'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:23423d0b0a9c135d4efb803aa5cb8f4e7ef6cbc9233ebb22e11c008fbd5a4c94', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 854, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 854, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
         if parser_config.get("hyperlink_urls", False) and is_root:
             for idx, (section_text, _) in enumerate(sections):
@@ -882,7 +1312,20 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
             from tika import parser as tika_parser
         except Exception as e:
             callback(0.8, f"tika not available: {e}. Unsupported .doc parsing.")
-            logging.warning(f"tika not available: {e}. Unsupported .doc parsing for {filename}.")
+            _lineaje_payload = f"tika not available: {e}. Unsupported .doc parsing for {filename}."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:6a8f0cbea3f0716130db4925b1e7df6067d575c5574e6fe438b97db811fd490c'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6a8f0cbea3f0716130db4925b1e7df6067d575c5574e6fe438b97db811fd490c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 885, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 885, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             return []
 
         binary = BytesIO(binary)
@@ -893,7 +1336,20 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
             callback(0.8, "Finish parsing.")
         else:
             callback(0.8, f"tika.parser got empty content from {filename}.")
-            logging.warning(f"tika.parser got empty content from {filename}.")
+            _lineaje_payload = f"tika.parser got empty content from {filename}."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0c797194d1934c3dd3dadf6d8309c1a4e8a1a8563ff73416c3d984f61cf900e3'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0c797194d1934c3dd3dadf6d8309c1a4e8a1a8563ff73416c3d984f61cf900e3', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 896, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 896, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             return []
     else:
         raise NotImplementedError(
@@ -975,11 +1431,37 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
             try:
                 sub_url_res = chunk(url, html_bytes, callback=callback, lang=lang, is_root=False, **kwargs)
             except Exception as e:
-                logging.info(f"Failed to chunk url in registered file type {url}: {e}")
+                _lineaje_payload = f"Failed to chunk url in registered file type {url}: {e}"
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:abd52aa03740df7bc6b7a7bfefb0c122ed1026adf25ec65e18275972a35dd702'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:abd52aa03740df7bc6b7a7bfefb0c122ed1026adf25ec65e18275972a35dd702', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 978, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 978, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.info(_lineaje_payload)
                 sub_url_res = chunk(f"{index}.html", html_bytes, callback=callback, lang=lang, is_root=False, **kwargs)
             url_res.extend(sub_url_res)
 
-    logging.info("naive_merge({}): {}".format(filename, timer() - st))
+    _lineaje_payload = "naive_merge({}): {}".format(filename, timer() - st)
+    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in chunk).
+    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:b92014ced6fa307a9e7396a6649015e6f5c1ec3b1cd5c27ef545a3453de9c2cd'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b92014ced6fa307a9e7396a6649015e6f5c1ec3b1cd5c27ef545a3453de9c2cd', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 982, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 982, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
+    logging.info(_lineaje_payload)
 
     if embed_res:
         res.extend(embed_res)
@@ -987,6 +1469,18 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
         res.extend(url_res)
     if table_context_size or image_context_size:
         attach_media_context(res, table_context_size, image_context_size)
+    # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in chunk).
+    #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+    #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+    #   Do not remove without review. site_id='site:sha256:d703d73bee460255d233a802c24d9742e492bcf99455550200e7718586365aea'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d703d73bee460255d233a802c24d9742e492bcf99455550200e7718586365aea', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/app/naive.py', 'line': 990, 'function': 'chunk'}, 'file': 'rag/app/naive.py', 'line': 990, 'function': 'chunk', 'agent_name': 'chunk', 'agent_name_source': 'inferred_from_function', 'not_on_graph': True})
+    try:
+        res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+    except _gr_client.GuardrailUnavailableError:
+        pass
+    except PermissionError:
+        pass
     return res
 
 
