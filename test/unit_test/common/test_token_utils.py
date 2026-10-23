@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -269,6 +287,16 @@ class TestTruncate:
         """Test string that exactly equals max_len in tokens"""
         # Create a string that encodes to exactly 5 tokens
         test_string = "hello world test"
+        # LINEAJE: runtime guardrail checks `test_string` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in TestTruncate.test_string_equal_to_max_len).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `test_string` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:73a20ac794ee76655cb665b45ebcccc983068fdd9097dc3b94f2140a48a0b293'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:73a20ac794ee76655cb665b45ebcccc983068fdd9097dc3b94f2140a48a0b293', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'test/unit_test/common/test_token_utils.py', 'line': 272, 'function': 'TestTruncate.test_string_equal_to_max_len'}, 'file': 'test/unit_test/common/test_token_utils.py', 'line': 272, 'function': 'test_string_equal_to_max_len', 'agent_name': 'TestTruncate', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            test_string = _gr_client.enforce(_gr_site, test_string, content_type='application/json', variable_name='test_string', source_file=__file__, before_line=272)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         encoded = encoder.encode(test_string)
         exact_length = len(encoded)
 
@@ -291,9 +319,29 @@ class TestTruncate:
         max_len = 3
 
         result = truncate(test_string, max_len)
+        # LINEAJE: runtime guardrail checks `result` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in TestTruncate.test_truncation_preserves_beginning).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `result` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f07653b515ebf627b97e5d613b1c59827dfbce9806faeed822e013ed4f700b5f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f07653b515ebf627b97e5d613b1c59827dfbce9806faeed822e013ed4f700b5f', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'test/unit_test/common/test_token_utils.py', 'line': 294, 'function': 'TestTruncate.test_truncation_preserves_beginning'}, 'file': 'test/unit_test/common/test_token_utils.py', 'line': 294, 'function': 'test_truncation_preserves_beginning', 'agent_name': 'TestTruncate', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            result = _gr_client.enforce(_gr_site, result, content_type='application/json', variable_name='result', source_file=__file__, before_line=294)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         encoded_result = encoder.encode(result)
 
         # The truncated result should match the beginning of the original encoding
+        # LINEAJE: runtime guardrail checks `test_string` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in TestTruncate.test_truncation_preserves_beginning).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `test_string` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:ea6b7d40f5a437c2b8a2ef14cb8d775e5ffaa77717bd988bd0eba9e4ed10d038'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ea6b7d40f5a437c2b8a2ef14cb8d775e5ffaa77717bd988bd0eba9e4ed10d038', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'test/unit_test/common/test_token_utils.py', 'line': 297, 'function': 'TestTruncate.test_truncation_preserves_beginning'}, 'file': 'test/unit_test/common/test_token_utils.py', 'line': 297, 'function': 'test_truncation_preserves_beginning', 'agent_name': 'TestTruncate', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            test_string = _gr_client.enforce(_gr_site, test_string, content_type='application/json', variable_name='test_string', source_file=__file__, before_line=297)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         original_encoded = encoder.encode(test_string)
         assert encoded_result == original_encoded[:max_len]
 
@@ -344,6 +392,16 @@ class TestTruncate:
 
         result = truncate(test_string, max_len)
         # Re-encoding the result should give the same token count
+        # LINEAJE: runtime guardrail checks `result` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in TestTruncate.test_preserves_decoding_encoding_consistency).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `result` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:2a6dd896c9759019ab5e4f9c254ee7513f73c769770c1124254d935986fa18de'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2a6dd896c9759019ab5e4f9c254ee7513f73c769770c1124254d935986fa18de', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'test/unit_test/common/test_token_utils.py', 'line': 347, 'function': 'TestTruncate.test_preserves_decoding_encoding_consistency'}, 'file': 'test/unit_test/common/test_token_utils.py', 'line': 347, 'function': 'test_preserves_decoding_encoding_consistency', 'agent_name': 'TestTruncate', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            result = _gr_client.enforce(_gr_site, result, content_type='application/json', variable_name='result', source_file=__file__, before_line=347)
+        except _gr_client.GuardrailUnavailableError:
+            pass
         re_encoded = encoder.encode(result)
         assert len(re_encoded) == max_len
 
