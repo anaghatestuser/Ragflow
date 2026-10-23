@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -166,6 +184,18 @@ class DBPostProcess:
         offset = pyclipper.PyclipperOffset()
         offset.AddPath(box, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
         expanded = np.array(offset.Execute(distance))
+        # LINEAJE: runtime guardrail checks `expanded` as it flows from the agent to the user interface, before it leaves the application (in DBPostProcess.unclip).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `expanded` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:c4f2fa7b27fa3fc082414110c81796a62e45a7ef7ab5f7b4124165a4059b8d29'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c4f2fa7b27fa3fc082414110c81796a62e45a7ef7ab5f7b4124165a4059b8d29', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 169, 'function': 'DBPostProcess.unclip'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 169, 'function': 'unclip', 'agent_name': 'DBPostProcess', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            expanded = _gr_client.enforce(_gr_site, expanded, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return expanded
 
     def get_mini_boxes(self, contour):
@@ -256,6 +286,18 @@ class DBPostProcess:
                     "box_type can only be one of ['quad', 'poly']")
 
             boxes_batch.append({'points': boxes})
+        # LINEAJE: runtime guardrail checks `boxes_batch` as it flows from the agent to the user interface, before it leaves the application (in DBPostProcess.__call__).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `boxes_batch` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:79528147ad238a8079676028182264653c6d25f713e02a201e73c1a4021402b3'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:79528147ad238a8079676028182264653c6d25f713e02a201e73c1a4021402b3', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 259, 'function': 'DBPostProcess.__call__'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 259, 'function': '__call__', 'agent_name': 'DBPostProcess', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            boxes_batch = _gr_client.enforce(_gr_site, boxes_batch, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return boxes_batch
 
 
@@ -273,6 +315,18 @@ class BaseRecLabelDecode:
             dict_character = list(self.character_str)
         else:
             with open(character_dict_path, "rb") as fin:
+                # LINEAJE: runtime guardrail checks `fin` as it flows from file storage to the agent (in BaseRecLabelDecode.__init__).
+                #   Detected: this statement moves data from file storage to the agent with no runtime policy check (detection confidence: medium).
+                #   Decision: the Guardrail evaluates AI_APP_SEC_070, AI_DAT_SEC_023, AI_DAT_SEC_024; sensitive values in `fin` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:9c59de0ec15c6cb8f6b102a05f7696d02f43e33d23e6e46a768468be5fdd06d6'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9c59de0ec15c6cb8f6b102a05f7696d02f43e33d23e6e46a768468be5fdd06d6', phase='file_upload', boundary={'source': 'file_upload', 'sink': 'agent_context'}, fail_mode='BLOCK', source_type='file_storage', destination_type='agent', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 276, 'function': 'BaseRecLabelDecode.__init__'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 276, 'function': '__init__', 'agent_name': 'BaseRecLabelDecode', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    fin = _gr_client.enforce(_gr_site, fin, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    raise
                 lines = fin.readlines()
                 for line in lines:
                     line = line.decode('utf-8').strip("\n").strip("\r\n")
@@ -306,6 +360,18 @@ class BaseRecLabelDecode:
         return ''.join(pred_re[::-1])
 
     def add_special_char(self, dict_character):
+        # LINEAJE: runtime guardrail checks `dict_character` as it flows from the agent to the user interface, before it leaves the application (in BaseRecLabelDecode.add_special_char).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dict_character` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:994c67fecf18defeb8e33a6fceb784bbd25f675f3af18661dd351eebf4a33b16'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:994c67fecf18defeb8e33a6fceb784bbd25f675f3af18661dd351eebf4a33b16', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 309, 'function': 'BaseRecLabelDecode.add_special_char'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 309, 'function': 'add_special_char', 'agent_name': 'BaseRecLabelDecode', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dict_character = _gr_client.enforce(_gr_site, dict_character, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dict_character
 
     def decode(self, text_index, text_prob=None, is_remove_duplicate=False):
@@ -338,6 +404,18 @@ class BaseRecLabelDecode:
                 text = self.pred_reverse(text)
 
             result_list.append((text, np.mean(conf_list).tolist()))
+        # LINEAJE: runtime guardrail checks `result_list` as it flows from the agent to the user interface, before it leaves the application (in BaseRecLabelDecode.decode).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `result_list` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:68758b35861f2f2c7b9f50edc5ab1b6bb17923f6fa43c46c1c6d03119db3ad41'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:68758b35861f2f2c7b9f50edc5ab1b6bb17923f6fa43c46c1c6d03119db3ad41', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 341, 'function': 'BaseRecLabelDecode.decode'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 341, 'function': 'decode', 'agent_name': 'BaseRecLabelDecode', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            result_list = _gr_client.enforce(_gr_site, result_list, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return result_list
 
     def get_ignored_tokens(self):
@@ -361,10 +439,34 @@ class CTCLabelDecode(BaseRecLabelDecode):
         preds_prob = preds.max(axis=2)
         text = self.decode(preds_idx, preds_prob, is_remove_duplicate=True)
         if label is None:
+            # LINEAJE: runtime guardrail checks `text` as it flows from the agent to the user interface, before it leaves the application (in CTCLabelDecode.__call__).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `text` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:ecb04bd100a11fa34401ae5b25c52906aa49765735d06490df46fd8923a064fd'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ecb04bd100a11fa34401ae5b25c52906aa49765735d06490df46fd8923a064fd', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 364, 'function': 'CTCLabelDecode.__call__'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 364, 'function': '__call__', 'agent_name': 'CTCLabelDecode', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                text = _gr_client.enforce(_gr_site, text, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return text
         label = self.decode(label)
         return text, label
 
     def add_special_char(self, dict_character):
         dict_character = ['blank'] + dict_character
+        # LINEAJE: runtime guardrail checks `dict_character` as it flows from the agent to the user interface, before it leaves the application (in CTCLabelDecode.add_special_char).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dict_character` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:7edb76890227925619bc23a3e7460af5fb4e2fbcb5e4fbfd7dbd0c0e4009b3ab'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7edb76890227925619bc23a3e7460af5fb4e2fbcb5e4fbfd7dbd0c0e4009b3ab', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/vision/postprocess.py', 'line': 370, 'function': 'CTCLabelDecode.add_special_char'}, 'file': 'deepdoc/vision/postprocess.py', 'line': 370, 'function': 'add_special_char', 'agent_name': 'CTCLabelDecode', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            dict_character = _gr_client.enforce(_gr_site, dict_character, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return dict_character
