@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -77,10 +95,36 @@ class RAGFlowPdfParser:
             recognizer_domain = "layout"
 
         if layout_recognizer_type == "ascend":
-            logging.debug("Using Ascend LayoutRecognizer")
+            _lineaje_payload = "Using Ascend LayoutRecognizer"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__init__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:b5626aba96658930e184dc797582e7cd2964e0142f3e32fbda5d4320bb819748'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b5626aba96658930e184dc797582e7cd2964e0142f3e32fbda5d4320bb819748', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 80, 'function': 'RAGFlowPdfParser.__init__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 80, 'function': '__init__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             self.layouter = AscendLayoutRecognizer(recognizer_domain)
         else:  # onnx
-            logging.debug("Using Onnx LayoutRecognizer")
+            _lineaje_payload = "Using Onnx LayoutRecognizer"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__init__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:0666c75f56f48b2a566783b73498c9371ef1296b194068299ad0fa6ceabd6e3e'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0666c75f56f48b2a566783b73498c9371ef1296b194068299ad0fa6ceabd6e3e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 83, 'function': 'RAGFlowPdfParser.__init__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 83, 'function': '__init__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.debug(_lineaje_payload)
             self.layouter = LayoutRecognizer(recognizer_domain)
         self.tbl_det = TableStructureRecognizer()
 
@@ -91,7 +135,20 @@ class RAGFlowPdfParser:
             if torch.cuda.is_available():
                 self.updown_cnt_mdl.set_param({"device": "cuda"})
         except Exception:
-            logging.info("No torch found.")
+            _lineaje_payload = "No torch found."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__init__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:045e5f98fd33c363a95872e9fa89bdd54ded9f866359f6bd4c66cf578f74e4cc'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:045e5f98fd33c363a95872e9fa89bdd54ded9f866359f6bd4c66cf578f74e4cc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 94, 'function': 'RAGFlowPdfParser.__init__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 94, 'function': '__init__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
         try:
             model_dir = os.path.join(get_project_base_directory(), "rag/res/deepdoc")
             self.updown_cnt_mdl.load_model(os.path.join(model_dir, "updown_concat_xgb.model"))
@@ -170,6 +227,18 @@ class RAGFlowPdfParser:
             len(tks_down) == 1 and rag_tokenizer.tag(tks_down[0]).find("n") >= 0,
             len(tks_up) == 1 and rag_tokenizer.tag(tks_up[0]).find("n") >= 0,
         ]
+        # LINEAJE: runtime guardrail checks `fea` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser._updown_concat_features).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `fea` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:df4e28025b69a4b37c6000a57003f3af0e474bf46d98cd3a8053710df3b8dab0'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:df4e28025b69a4b37c6000a57003f3af0e474bf46d98cd3a8053710df3b8dab0', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 173, 'function': 'RAGFlowPdfParser._updown_concat_features'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 173, 'function': '_updown_concat_features', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            fea = _gr_client.enforce(_gr_site, fea, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return fea
 
     @staticmethod
@@ -183,6 +252,18 @@ class RAGFlowPdfParser:
                     tmp = arr[j]
                     arr[j] = arr[j + 1]
                     arr[j + 1] = tmp
+        # LINEAJE: runtime guardrail checks `arr` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.sort_X_by_page).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `arr` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:b1d199f99ff9584debbeeca18dcba580af4aeebbc5b9e66352a32b078911e58f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b1d199f99ff9584debbeeca18dcba580af4aeebbc5b9e66352a32b078911e58f', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 186, 'function': 'RAGFlowPdfParser.sort_X_by_page'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 186, 'function': 'sort_X_by_page', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            arr = _gr_client.enforce(_gr_site, arr, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return arr
 
     def _has_color(self, o):
@@ -193,7 +274,20 @@ class RAGFlowPdfParser:
         return True
 
     def _table_transformer_job(self, ZM):
-        logging.debug("Table processing...")
+        _lineaje_payload = "Table processing..."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser._table_transformer_job).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:5b9de8d245611f31e193f30c2b7bbdcb0ab3e146a194eda20ffa6db49cfc7636'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5b9de8d245611f31e193f30c2b7bbdcb0ab3e146a194eda20ffa6db49cfc7636', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 196, 'function': 'RAGFlowPdfParser._table_transformer_job'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 196, 'function': '_table_transformer_job', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         imgs, pos = [], []
         tbcnt = [0]
         MARGIN = 10
@@ -281,7 +375,20 @@ class RAGFlowPdfParser:
     def __ocr(self, pagenum, img, chars, ZM=3, device_id: int | None = None):
         start = timer()
         bxs = self.ocr.detect(np.array(img), device_id)
-        logging.info(f"__ocr detecting boxes of a image cost ({timer() - start}s)")
+        _lineaje_payload = f"__ocr detecting boxes of a image cost ({timer() - start}s)"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__ocr).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:e7003b5125f91dff588b1614ad8a299969fb1900a72d85b5beb4093b90c75eda'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e7003b5125f91dff588b1614ad8a299969fb1900a72d85b5beb4093b90c75eda', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 284, 'function': 'RAGFlowPdfParser.__ocr'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 284, 'function': '__ocr', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
         start = timer()
         if not bxs:
@@ -323,7 +430,20 @@ class RAGFlowPdfParser:
                     b["text"] += c["text"]
             del b["chars"]
 
-        logging.info(f"__ocr sorting {len(chars)} chars cost {timer() - start}s")
+        _lineaje_payload = f"__ocr sorting {len(chars)} chars cost {timer() - start}s"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__ocr).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:0b8a58ecbf1b59c3ffb7dadd6f56e2158450f72275d0f1d24da1d0b1c920c3c7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0b8a58ecbf1b59c3ffb7dadd6f56e2158450f72275d0f1d24da1d0b1c920c3c7', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 326, 'function': 'RAGFlowPdfParser.__ocr'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 326, 'function': '__ocr', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         start = timer()
         boxes_to_reg = []
         img_np = np.array(img)
@@ -337,7 +457,20 @@ class RAGFlowPdfParser:
         for i in range(len(boxes_to_reg)):
             boxes_to_reg[i]["text"] = texts[i]
             del boxes_to_reg[i]["box_image"]
-        logging.info(f"__ocr recognize {len(bxs)} boxes cost {timer() - start}s")
+        _lineaje_payload = f"__ocr recognize {len(bxs)} boxes cost {timer() - start}s"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__ocr).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:edbc96b51e178a40c5eb50806b9efe9b302af4cbbb51d05cc3f63a4fa3ac1dbe'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:edbc96b51e178a40c5eb50806b9efe9b302af4cbbb51d05cc3f63a4fa3ac1dbe', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 340, 'function': 'RAGFlowPdfParser.__ocr'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 340, 'function': '__ocr', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
         bxs = [b for b in bxs if b["text"]]
         if self.mean_height[pagenum - 1] == 0:
             self.mean_height[pagenum - 1] = np.median([b["bottom"] - b["top"] for b in bxs])
@@ -353,8 +486,32 @@ class RAGFlowPdfParser:
 
     def _assign_column(self, boxes, zoomin=3):
         if not boxes:
+            # LINEAJE: runtime guardrail checks `boxes` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser._assign_column).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:cf802e3f0caf7ac130612b2963e9aafb59dd6887c8198f695bf81b8dcaa34bab'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:cf802e3f0caf7ac130612b2963e9aafb59dd6887c8198f695bf81b8dcaa34bab', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 356, 'function': 'RAGFlowPdfParser._assign_column'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 356, 'function': '_assign_column', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                boxes = _gr_client.enforce(_gr_site, boxes, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return boxes
         if all("col_id" in b for b in boxes):
+            # LINEAJE: runtime guardrail checks `boxes` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser._assign_column).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9767fed99692b7f215edf3d3e5aa95e4eef951a1965c78c949b0efe7e204a5da'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9767fed99692b7f215edf3d3e5aa95e4eef951a1965c78c949b0efe7e204a5da', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 358, 'function': 'RAGFlowPdfParser._assign_column'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 358, 'function': '_assign_column', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                boxes = _gr_client.enforce(_gr_site, boxes, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return boxes
 
         by_page = defaultdict(list)
@@ -406,11 +563,37 @@ class RAGFlowPdfParser:
                     best_k = k
 
             page_cols[pg] = best_k
-            logging.info(f"[Page {pg}] best_score={best_score:.2f}, best_k={best_k}")
+            _lineaje_payload = f"[Page {pg}] best_score={best_score:.2f}, best_k={best_k}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser._assign_column).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:145f7a83ca679f5411748f18484e293ff2837c2381404f2d79c3d2b8fe2ade51'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:145f7a83ca679f5411748f18484e293ff2837c2381404f2d79c3d2b8fe2ade51', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 409, 'function': 'RAGFlowPdfParser._assign_column'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 409, 'function': '_assign_column', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
 
 
         global_cols = Counter(page_cols.values()).most_common(1)[0][0]
-        logging.info(f"Global column_num decided by majority: {global_cols}")
+        _lineaje_payload = f"Global column_num decided by majority: {global_cols}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser._assign_column).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:05f6f39bcaa7bcf006891e713b3c82edfc019eb408f148e9684e3b7af4883148'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:05f6f39bcaa7bcf006891e713b3c82edfc019eb408f148e9684e3b7af4883148', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 413, 'function': 'RAGFlowPdfParser._assign_column'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 413, 'function': '_assign_column', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
 
         for pg, bxs in by_page.items():
@@ -435,6 +618,18 @@ class RAGFlowPdfParser:
             for b in bxs:
                 grouped[b["col_id"]].append(b)
 
+        # LINEAJE: runtime guardrail checks `boxes` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser._assign_column).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `boxes` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:5570a1c9de3d326bc131f7fd1628cd640adce0e6b70cd38cd5d67c7ebc233f49'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5570a1c9de3d326bc131f7fd1628cd640adce0e6b70cd38cd5d67c7ebc233f49', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 438, 'function': 'RAGFlowPdfParser._assign_column'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 438, 'function': '_assign_column', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            boxes = _gr_client.enforce(_gr_site, boxes, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return boxes
 
     def _text_merge(self, zoomin=3):
@@ -532,13 +727,26 @@ class RAGFlowPdfParser:
                 # split features
                 detach_feats = [b["x1"] < b_["x0"], b["x0"] > b_["x1"]]
                 if (any(feats) and not any(concatting_feats)) or any(detach_feats):
-                    logging.debug(
-                        "{} {} {} {}".format(
+                    _lineaje_payload = ("{} {} {} {}".format(
                             b["text"],
                             b_["text"],
                             any(feats),
                             any(concatting_feats),
-                        )
+                        ))
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser._naive_vertical_merge).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:421f3b5d6b8a33b776ab14063c17e2976735edd29e1d4914fe0bf7312009fc9a'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:421f3b5d6b8a33b776ab14063c17e2976735edd29e1d4914fe0bf7312009fc9a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 535, 'function': 'RAGFlowPdfParser._naive_vertical_merge'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 535, 'function': '_naive_vertical_merge', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.debug(
+                        _lineaje_payload
                     )
                     i += 1
                     continue
@@ -845,10 +1053,36 @@ class RAGFlowPdfParser:
             #    continue
             if tv < fv and tk:
                 tables[tk].insert(0, c)
-                logging.debug("TABLE:" + self.boxes[i]["text"] + "; Cap: " + tk)
+                _lineaje_payload = "TABLE:" + self.boxes[i]["text"] + "; Cap: " + tk
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.nearest).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:5ab7977f8d609aa3f0ff91af4f548a6459e2276ff5cdb11c88f4369d7cf7f686'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:5ab7977f8d609aa3f0ff91af4f548a6459e2276ff5cdb11c88f4369d7cf7f686', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 848, 'function': 'RAGFlowPdfParser._extract_table_figure'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 848, 'function': 'nearest', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
             elif fk:
                 figures[fk].insert(0, c)
-                logging.debug("FIGURE:" + self.boxes[i]["text"] + "; Cap: " + tk)
+                _lineaje_payload = "FIGURE:" + self.boxes[i]["text"] + "; Cap: " + tk
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.nearest).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:672a13a4d2280e56efb62ad446c4c96e67c39de895974d2e8a94a43dcb93700d'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:672a13a4d2280e56efb62ad446c4c96e67c39de895974d2e8a94a43dcb93700d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 851, 'function': 'RAGFlowPdfParser._extract_table_figure'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 851, 'function': 'nearest', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
             self.boxes.pop(i)
 
         def cropout(bxs, ltype, poss):
@@ -863,7 +1097,20 @@ class RAGFlowPdfParser:
                 if ii is not None:
                     b = louts[ii]
                 else:
-                    logging.warning(f"Missing layout match: {pn + 1},%s" % (bxs[0].get("layoutno", "")))
+                    _lineaje_payload = f"Missing layout match: {pn + 1},%s" % (bxs[0].get("layoutno", ""))
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.cropout).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:8e34c644ad997f27aeee8512112819ac3a2d9fa9bea7f4d90efd99d8eb061018'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8e34c644ad997f27aeee8512112819ac3a2d9fa9bea7f4d90efd99d8eb061018', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 866, 'function': 'RAGFlowPdfParser._extract_table_figure.cropout'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 866, 'function': 'cropout', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.warning(_lineaje_payload)
 
                 left, top, right, bott = b["x0"], b["top"], b["x1"], b["bottom"]
                 if right < left:
@@ -883,6 +1130,18 @@ class RAGFlowPdfParser:
             for img in imgs:
                 pic.paste(img, (0, int(height)))
                 height += img.size[1]
+            # LINEAJE: runtime guardrail checks `pic` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.cropout).
+            #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `pic` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:c6c26d1cd16f0a05d5c37478acf100db5c727f1cac894258865c99f36a92c45b'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c6c26d1cd16f0a05d5c37478acf100db5c727f1cac894258865c99f36a92c45b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 886, 'function': 'RAGFlowPdfParser._extract_table_figure.cropout'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 886, 'function': 'cropout', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                pic = _gr_client.enforce(_gr_site, pic, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return pic
 
         res = []
@@ -925,6 +1184,18 @@ class RAGFlowPdfParser:
             if need_position:
                 return list(zip(res, positions))
             else:
+                # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.cropout).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:b4fd620eda448a67177f92bd6b91c8876d6666577336ab8aca18808eadd7027c'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:b4fd620eda448a67177f92bd6b91c8876d6666577336ab8aca18808eadd7027c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 928, 'function': 'RAGFlowPdfParser._extract_table_figure'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 928, 'function': 'cropout', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return res
 
     def proj_match(self, line):
@@ -948,6 +1219,18 @@ class RAGFlowPdfParser:
             (r"[⚫•➢✓]", 12),
         ]:
             if re.match(p, line):
+                # LINEAJE: runtime guardrail checks `j` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.proj_match).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `j` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:12c8811a2a88f3e444a8e1cb158f44b3f67a5d56febc770814f6f9652bc3800d'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:12c8811a2a88f3e444a8e1cb158f44b3f67a5d56febc770814f6f9652bc3800d', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 951, 'function': 'RAGFlowPdfParser.proj_match'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 951, 'function': 'proj_match', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    j = _gr_client.enforce(_gr_site, j, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return j
         return
 
@@ -1014,7 +1297,20 @@ class RAGFlowPdfParser:
                 if usefull(boxes[0]):
                     dfs(boxes[0], 0)
                 else:
-                    logging.debug("WASTE: " + boxes[0]["text"])
+                    _lineaje_payload = "WASTE: " + boxes[0]["text"]
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.dfs).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:2c1248b26b2d7537866ae1388331a7bd235f3a3a36a2117dde468e3cb458816d'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2c1248b26b2d7537866ae1388331a7bd235f3a3a36a2117dde468e3cb458816d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1017, 'function': 'RAGFlowPdfParser.__filterout_scraps'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1017, 'function': 'dfs', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.debug(_lineaje_payload)
             except Exception:
                 pass
             boxes.pop(0)
@@ -1022,7 +1318,20 @@ class RAGFlowPdfParser:
             if mj or mw / pw >= 0.35 or mw > 200:
                 res.append("\n".join([c["text"] + self._line_tag(c, ZM) for c in lines]))
             else:
-                logging.debug("REMOVED: " + "<<".join([c["text"] for c in lines]))
+                _lineaje_payload = "REMOVED: " + "<<".join([c["text"] for c in lines])
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.dfs).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:8a423e8510b0562abfc4130e025ab7186838c3b292658df863e5e4cafd17d18e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8a423e8510b0562abfc4130e025ab7186838c3b292658df863e5e4cafd17d18e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1025, 'function': 'RAGFlowPdfParser.__filterout_scraps'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1025, 'function': 'dfs', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.debug(_lineaje_payload)
 
         return "\n\n".join(res)
 
@@ -1033,9 +1342,34 @@ class RAGFlowPdfParser:
                 pdf = pdfplumber.open(fnm) if not binary else pdfplumber.open(BytesIO(binary))
             total_page = len(pdf.pages)
             pdf.close()
+            # LINEAJE: runtime guardrail checks `total_page` as it flows from a tool to the user interface, before it leaves the application (in RAGFlowPdfParser.total_page_number).
+            #   Detected: this statement moves data from a tool to the user interface with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_012, AI_DAT_SEC_027; sensitive values in `total_page` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:d531bdd45a6f2c1ad164ce3b9eb11105fef92a53f7bc8447a1ee0d451bb46618'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d531bdd45a6f2c1ad164ce3b9eb11105fef92a53f7bc8447a1ee0d451bb46618', phase='data_egress', boundary={'source': 'tool_result', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='tool', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1036, 'function': 'RAGFlowPdfParser.total_page_number'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1036, 'function': 'total_page_number', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                total_page = _gr_client.enforce(_gr_site, total_page, content_type='text/plain')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
             return total_page
         except Exception:
-            logging.exception("total_page_number")
+            _lineaje_payload = "total_page_number"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.total_page_number).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:3023c9bad6f4172245d0d14b8e8f3c48c1c04b9b5877ad8fa6b28304de3cd640'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3023c9bad6f4172245d0d14b8e8f3c48c1c04b9b5877ad8fa6b28304de3cd640', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1038, 'function': 'RAGFlowPdfParser.total_page_number'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1038, 'function': 'total_page_number', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
 
     def __images__(self, fnm, zoomin=3, page_from=0, page_to=299, callback=None):
         self.lefted_chars = []
@@ -1056,14 +1390,53 @@ class RAGFlowPdfParser:
                     try:
                         self.page_chars = [[c for c in page.dedupe_chars().chars if self._has_color(c)] for page in self.pdf.pages[page_from:page_to]]
                     except Exception as e:
-                        logging.warning(f"Failed to extract characters for pages {page_from}-{page_to}: {str(e)}")
+                        _lineaje_payload = f"Failed to extract characters for pages {page_from}-{page_to}: {str(e)}"
+                        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+                        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                        #   Do not remove without review. site_id='site:sha256:012c682e435b7648c26f7e3a7a6bb7cdd0468be4aafcf643ae75dcb9f3e4e94a'
+                        _gr_client = _lineaje_load_gr_client()
+                        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:012c682e435b7648c26f7e3a7a6bb7cdd0468be4aafcf643ae75dcb9f3e4e94a', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1059, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1059, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                        try:
+                            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                        except _gr_client.GuardrailUnavailableError:
+                            pass
+                        except PermissionError:
+                            pass
+                        logging.warning(_lineaje_payload)
                         self.page_chars = [[] for _ in range(page_to - page_from)]  # If failed to extract, using empty list instead.
 
                     self.total_page = len(self.pdf.pages)
 
         except Exception:
-            logging.exception("RAGFlowPdfParser __images__")
-        logging.info(f"__images__ dedupe_chars cost {timer() - start}s")
+            _lineaje_payload = "RAGFlowPdfParser __images__"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:72125421a570bfd68730601caf2ba3a5afe0110fec00dcbbaca62b25d076f1c1'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:72125421a570bfd68730601caf2ba3a5afe0110fec00dcbbaca62b25d076f1c1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1065, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1065, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
+        _lineaje_payload = f"__images__ dedupe_chars cost {timer() - start}s"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:17cd89cd3a08f40a5656179e79c3b33bb5ec8b5c929b25208a5be82dffe6b15d'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:17cd89cd3a08f40a5656179e79c3b33bb5ec8b5c929b25208a5be82dffe6b15d', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1066, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1066, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
         self.outlines = []
         try:
@@ -1082,12 +1455,51 @@ class RAGFlowPdfParser:
                 dfs(outlines, 0)
 
         except Exception as e:
-            logging.warning(f"Outlines exception: {e}")
+            _lineaje_payload = f"Outlines exception: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:e43c010ed1edd518038137f7b10244bcc86863684d6e0ad18a0546d65377b403'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e43c010ed1edd518038137f7b10244bcc86863684d6e0ad18a0546d65377b403', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1085, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1085, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
         if not self.outlines:
-            logging.warning("Miss outlines")
+            _lineaje_payload = "Miss outlines"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a528173c242ca8dac0023e0e26487b7db95d997104f73e7b1c275e2a8aafa577'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a528173c242ca8dac0023e0e26487b7db95d997104f73e7b1c275e2a8aafa577', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1088, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1088, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
-        logging.debug("Images converted.")
+        _lineaje_payload = "Images converted."
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:6b893eeac3d7745c4ab1d0c538cca436d96288d24462f0c545e8f54ca769cb4f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6b893eeac3d7745c4ab1d0c538cca436d96288d24462f0c545e8f54ca769cb4f', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1090, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1090, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
         self.is_english = [
             re.search(r"[ a-zA-Z0-9,/¸;:'\[\]\(\)!@#$%^&*\"?<>._-]{30,}", "".join(random.choices([c["text"] for c in self.page_chars[i]], k=min(100, len(self.page_chars[i])))))
             for i in range(len(self.page_chars))
@@ -1124,6 +1536,18 @@ class RAGFlowPdfParser:
                 self.mean_height.append(np.median(sorted([c["height"] for c in chars])) if chars else 0)
                 self.mean_width.append(np.median(sorted([c["width"] for c in chars])) if chars else 8)
                 self.page_cum_height.append(img.size[1] / zoomin)
+                # LINEAJE: runtime guardrail checks `chars` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.__ocr_preprocess).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `chars` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:3e3eaac618a57478baefa312545d656cfbd848cdcad0a842b57a8d09e50ead29'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3e3eaac618a57478baefa312545d656cfbd848cdcad0a842b57a8d09e50ead29', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1127, 'function': 'RAGFlowPdfParser.__images__.__img_ocr_launcher.__ocr_preprocess'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1127, 'function': '__ocr_preprocess', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    chars = _gr_client.enforce(_gr_site, chars, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return chars
 
             if self.parallel_limiter:
@@ -1149,7 +1573,20 @@ class RAGFlowPdfParser:
                 try:
                     await asyncio.gather(*tasks, return_exceptions=False)
                 except Exception as e:
-                    logging.error(f"Error in OCR: {e}")
+                    _lineaje_payload = f"Error in OCR: {e}"
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__ocr_preprocess).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:7a200d22ba427f1903cd81ff822f7224fd12739b11587622a0bdc506581e16d1'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7a200d22ba427f1903cd81ff822f7224fd12739b11587622a0bdc506581e16d1', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1152, 'function': 'RAGFlowPdfParser.__images__.__img_ocr_launcher'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1152, 'function': '__ocr_preprocess', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.error(_lineaje_payload)
                     for t in tasks:
                         t.cancel()
                     await asyncio.gather(*tasks, return_exceptions=True)
@@ -1164,13 +1601,39 @@ class RAGFlowPdfParser:
 
         asyncio.run(__img_ocr_launcher())
 
-        logging.info(f"__images__ {len(self.page_images)} pages cost {timer() - start}s")
+        _lineaje_payload = f"__images__ {len(self.page_images)} pages cost {timer() - start}s"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:7e45baaa55c45b9d980a6ef155b638fe5098a62185b8860a25ae9da56f1573fa'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7e45baaa55c45b9d980a6ef155b638fe5098a62185b8860a25ae9da56f1573fa', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1167, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1167, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.info(_lineaje_payload)
 
         if not self.is_english and not any([c for c in self.page_chars]) and self.boxes:
             bxes = [b for bxs in self.boxes for b in bxs]
             self.is_english = re.search(r"[ \na-zA-Z0-9,/¸;:'\[\]\(\)!@#$%^&*\"?<>._-]{30,}", "".join([b["text"] for b in random.choices(bxes, k=min(30, len(bxes)))]))
 
-        logging.debug(f"Is it English: {self.is_english}")
+        _lineaje_payload = f"Is it English: {self.is_english}"
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.__images__).
+        #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:a7c135458f064483b4cdec3e1482aec9dc1d39649eb18fa754210abef4387f21'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a7c135458f064483b4cdec3e1482aec9dc1d39649eb18fa754210abef4387f21', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1173, 'function': 'RAGFlowPdfParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1173, 'function': '__images__', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
+        logging.debug(_lineaje_payload)
 
         self.page_cum_height = np.cumsum(self.page_cum_height)
         assert len(self.page_cum_height) == len(self.page_images) + 1
@@ -1282,6 +1745,18 @@ class RAGFlowPdfParser:
             pn, left, right, top, bottom = tag.strip("#").strip("@").split("\t")
             left, right, top, bottom = float(left), float(right), float(top), float(bottom)
             poss.append(([int(p) - 1 for p in pn.split("-")], left, right, top, bottom))
+        # LINEAJE: runtime guardrail checks `poss` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.extract_positions).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `poss` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:4de20499e455e7dd94e427c9c3907503663fcf0fb53c1b4a0a8d1abc1a7bf01b'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4de20499e455e7dd94e427c9c3907503663fcf0fb53c1b4a0a8d1abc1a7bf01b', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1285, 'function': 'RAGFlowPdfParser.extract_positions'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1285, 'function': 'extract_positions', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            poss = _gr_client.enforce(_gr_site, poss, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return poss
 
     def crop(self, text, ZM=3, need_position=False):
@@ -1293,7 +1768,20 @@ class RAGFlowPdfParser:
             return
 
         if not getattr(self, "page_images", None):
-            logging.warning("crop called without page images; skipping image generation.")
+            _lineaje_payload = "crop called without page images; skipping image generation."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:7b17451664bec5047c77639ee981dc28b23692708f669a6a0a32f0a7e396eea2'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7b17451664bec5047c77639ee981dc28b23692708f669a6a0a32f0a7e396eea2', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1296, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1296, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             if need_position:
                 return None, None
             return
@@ -1303,17 +1791,56 @@ class RAGFlowPdfParser:
         filtered_poss = []
         for pns, left, right, top, bottom in poss:
             if not pns:
-                logging.warning("Empty page index list in crop; skipping this position.")
+                _lineaje_payload = "Empty page index list in crop; skipping this position."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:4bb3369037d842ee27ec61a3e3cda6f1a9f854aa2c8a2fc5e912439efee2c7da'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4bb3369037d842ee27ec61a3e3cda6f1a9f854aa2c8a2fc5e912439efee2c7da', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1306, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1306, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 continue
             valid_pns = [p for p in pns if 0 <= p < page_count]
             if not valid_pns:
-                logging.warning(f"All page indices {pns} out of range for {page_count} pages; skipping.")
+                _lineaje_payload = f"All page indices {pns} out of range for {page_count} pages; skipping."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:bd7df80f984837284af40c816ff7ca04f5f00a36a9b672b1a800f72194c18071'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bd7df80f984837284af40c816ff7ca04f5f00a36a9b672b1a800f72194c18071', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1310, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1310, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 continue
             filtered_poss.append((valid_pns, left, right, top, bottom))
 
         poss = filtered_poss
         if not poss:
-            logging.warning("No valid positions after filtering; skip cropping.")
+            _lineaje_payload = "No valid positions after filtering; skip cropping."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:ab9f9765292cbcf45196a5250230b0127dce131b109f9c6bb39efb34813de9a4'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ab9f9765292cbcf45196a5250230b0127dce131b109f9c6bb39efb34813de9a4', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1316, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1316, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             if need_position:
                 return None, None
             return
@@ -1326,7 +1853,20 @@ class RAGFlowPdfParser:
         pos = poss[-1]
         last_page_idx = pos[0][-1]
         if not (0 <= last_page_idx < page_count):
-            logging.warning(f"Last page index {last_page_idx} out of range for {page_count} pages; skipping crop.")
+            _lineaje_payload = f"Last page index {last_page_idx} out of range for {page_count} pages; skipping crop."
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:a0493e5edcf112aecc14e6a8943b58ff4b6044f629ddcf86107a2c89c6b4d1e5'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:a0493e5edcf112aecc14e6a8943b58ff4b6044f629ddcf86107a2c89c6b4d1e5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1329, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1329, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
             if need_position:
                 return None, None
             return
@@ -1352,10 +1892,36 @@ class RAGFlowPdfParser:
                 if 0 <= pn - 1 < page_count:
                     bottom += self.page_images[pn - 1].size[1]
                 else:
-                    logging.warning(f"Page index {pn}-1 out of range for {page_count} pages during crop; skipping height accumulation.")
+                    _lineaje_payload = f"Page index {pn}-1 out of range for {page_count} pages during crop; skipping height accumulation."
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:8fb9be6fe4e8f05820c89e2b86f91fb69fd1a7ca16bc98b3c9b455079b8f585b'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8fb9be6fe4e8f05820c89e2b86f91fb69fd1a7ca16bc98b3c9b455079b8f585b', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1355, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1355, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.warning(_lineaje_payload)
 
             if not (0 <= pns[0] < page_count):
-                logging.warning(f"Base page index {pns[0]} out of range for {page_count} pages during crop; skipping this segment.")
+                _lineaje_payload = f"Base page index {pns[0]} out of range for {page_count} pages during crop; skipping this segment."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:c5c7be6b2a81f41b3e15845a32fcf7c8ee2907f4455e7747cad24dcea08fdcdc'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c5c7be6b2a81f41b3e15845a32fcf7c8ee2907f4455e7747cad24dcea08fdcdc', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1358, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1358, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
                 continue
 
             imgs.append(self.page_images[pns[0]].crop((left * ZM, top * ZM, right * ZM, min(bottom, self.page_images[pns[0]].size[1]))))
@@ -1364,7 +1930,20 @@ class RAGFlowPdfParser:
             bottom -= self.page_images[pns[0]].size[1]
             for pn in pns[1:]:
                 if not (0 <= pn < page_count):
-                    logging.warning(f"Page index {pn} out of range for {page_count} pages during crop; skipping this page.")
+                    _lineaje_payload = f"Page index {pn} out of range for {page_count} pages during crop; skipping this page."
+                    # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in RAGFlowPdfParser.crop).
+                    #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                    #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                    #   Do not remove without review. site_id='site:sha256:1f9a53a3cd54f268b19d78fbfc9327990e49889f999372594b78990530496a7e'
+                    _gr_client = _lineaje_load_gr_client()
+                    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:1f9a53a3cd54f268b19d78fbfc9327990e49889f999372594b78990530496a7e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1367, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1367, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                    try:
+                        _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+                    except _gr_client.GuardrailUnavailableError:
+                        pass
+                    except PermissionError:
+                        pass
+                    logging.warning(_lineaje_payload)
                     continue
                 imgs.append(self.page_images[pn].crop((left * ZM, 0, right * ZM, min(bottom, self.page_images[pn].size[1]))))
                 if 0 < ii < len(poss) - 1:
@@ -1393,6 +1972,18 @@ class RAGFlowPdfParser:
 
         if need_position:
             return pic, positions
+        # LINEAJE: runtime guardrail checks `pic` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.crop).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `pic` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:bdab0c17a353e2ca8785092e974067904bef4b587f9b3e6a84e8648a1e75ee26'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:bdab0c17a353e2ca8785092e974067904bef4b587f9b3e6a84e8648a1e75ee26', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1396, 'function': 'RAGFlowPdfParser.crop'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1396, 'function': 'crop', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            pic = _gr_client.enforce(_gr_site, pic, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return pic
 
     def get_position(self, bx, ZM):
@@ -1406,6 +1997,18 @@ class RAGFlowPdfParser:
             top = 0
             pn += 1
             poss.append((pn, bx["x0"], bx["x1"], top, min(bott, self.page_images[pn - 1].size[1] / ZM)))
+        # LINEAJE: runtime guardrail checks `poss` as it flows from the agent to the user interface, before it leaves the application (in RAGFlowPdfParser.get_position).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `poss` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:80e9ee0cd7902bc42b91d1eb9d66c1f09e1b336f596d51f4f3d246889bd70e8c'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:80e9ee0cd7902bc42b91d1eb9d66c1f09e1b336f596d51f4f3d246889bd70e8c', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1409, 'function': 'RAGFlowPdfParser.get_position'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1409, 'function': 'get_position', 'agent_name': 'RAGFlowPdfParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            poss = _gr_client.enforce(_gr_site, poss, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return poss
 
 
@@ -1429,9 +2032,35 @@ class PlainParser:
 
             dfs(outlines, 0)
         except Exception:
-            logging.exception("Outlines exception")
+            _lineaje_payload = "Outlines exception"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PlainParser.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:f27a859ee9d274dd82d824e4c2ed7a17f7fb3325b66325c8d0d243e0a1329203'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f27a859ee9d274dd82d824e4c2ed7a17f7fb3325b66325c8d0d243e0a1329203', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1432, 'function': 'PlainParser.__call__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1432, 'function': '__call__', 'agent_name': 'PlainParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
         if not self.outlines:
-            logging.warning("Miss outlines")
+            _lineaje_payload = "Miss outlines"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in PlainParser.__call__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:e2dfc4bd8eb298de70aa47185bc88acc0143467bdd19d4b3b3b71890ffaddf57'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e2dfc4bd8eb298de70aa47185bc88acc0143467bdd19d4b3b3b71890ffaddf57', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1434, 'function': 'PlainParser.__call__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1434, 'function': '__call__', 'agent_name': 'PlainParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.warning(_lineaje_payload)
 
         return [(line, "") for line in lines], []
 
@@ -1458,7 +2087,20 @@ class VisionParser(RAGFlowPdfParser):
         except Exception:
             self.page_images = None
             self.total_page = 0
-            logging.exception("VisionParser __images__")
+            _lineaje_payload = "VisionParser __images__"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in VisionParser.__images__).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:2d5af7569c465514055005e28430ddb10e4881084b36aed8597295bc3500e3d9'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2d5af7569c465514055005e28430ddb10e4881084b36aed8597295bc3500e3d9', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'deepdoc/parser/pdf_parser.py', 'line': 1461, 'function': 'VisionParser.__images__'}, 'file': 'deepdoc/parser/pdf_parser.py', 'line': 1461, 'function': '__images__', 'agent_name': 'VisionParser', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.exception(_lineaje_payload)
 
     def __call__(self, filename, from_page=0, to_page=100000, **kwargs):
         callback = kwargs.get("callback", lambda prog, msg: None)
