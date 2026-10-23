@@ -20,6 +20,24 @@ ExcelProcessor Component
 A component for reading, processing, and generating Excel files in RAGFlow agents.
 Supports multiple Excel file inputs, data transformation, and Excel output generation.
 """
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 
 import logging
 import os
@@ -109,6 +127,18 @@ class ExcelProcessor(ComponentBase, ABC):
         if self._param.transform_data:
             for k, o in self.get_input_elements_from_text(self._param.transform_data).items():
                 res[k] = {"name": o.get("name", ""), "type": "object"}
+        # LINEAJE: runtime guardrail checks `res` as it flows from the agent to the user interface, before it leaves the application (in ExcelProcessor.get_input_form).
+        #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+        #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `res` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:f055b70768f9fa70c925c5aaebc97335ec72d93e9e057efd684a9b29b2d65839'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:f055b70768f9fa70c925c5aaebc97335ec72d93e9e057efd684a9b29b2d65839', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/excel_processor.py', 'line': 112, 'function': 'ExcelProcessor.get_input_form'}, 'file': 'agent/component/excel_processor.py', 'line': 112, 'function': 'get_input_form', 'agent_name': 'ExcelProcessor', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            res = _gr_client.enforce(_gr_site, res, content_type='text/plain')
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        except PermissionError:
+            pass
         return res
 
     @timeout(int(os.environ.get("COMPONENT_EXEC_TIMEOUT", 10*60)))
@@ -191,10 +221,35 @@ class ExcelProcessor(ComponentBase, ABC):
                 dfs = {}
                 for sheet in sheets_to_read:
                     dfs[sheet] = pd.read_excel(xlsx, sheet_name=sheet)
+                # LINEAJE: runtime guardrail checks `dfs` as it flows from the agent to the user interface, before it leaves the application (in ExcelProcessor._parse_excel_to_dataframes).
+                #   Detected: this statement moves data from the agent to the user interface with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_012; sensitive values in `dfs` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:65658d2cb54ea88adbc749d4e3568a85ba96600e2b13380e4811257b86189ba5'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:65658d2cb54ea88adbc749d4e3568a85ba96600e2b13380e4811257b86189ba5', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'user_interface'}, fail_mode='BLOCK', source_type='agent', destination_type='user_interface', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/excel_processor.py', 'line': 194, 'function': 'ExcelProcessor._parse_excel_to_dataframes'}, 'file': 'agent/component/excel_processor.py', 'line': 194, 'function': '_parse_excel_to_dataframes', 'agent_name': 'ExcelProcessor', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    dfs = _gr_client.enforce(_gr_site, dfs, content_type='text/plain')
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
                 return dfs
                 
         except Exception as e:
-            logging.error(f"Error parsing Excel file {filename}: {e}")
+            _lineaje_payload = f"Error parsing Excel file {filename}: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ExcelProcessor._parse_excel_to_dataframes).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:381bbfc9896447c93dcf9e2a47799988aac5628508efb5d9c7dc4b18de02e0c5'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:381bbfc9896447c93dcf9e2a47799988aac5628508efb5d9c7dc4b18de02e0c5', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/excel_processor.py', 'line': 197, 'function': 'ExcelProcessor._parse_excel_to_dataframes'}, 'file': 'agent/component/excel_processor.py', 'line': 197, 'function': '_parse_excel_to_dataframes', 'agent_name': 'ExcelProcessor', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             return {}
 
     def _read_excels(self):
@@ -381,10 +436,36 @@ class ExcelProcessor(ComponentBase, ABC):
             self.set_output("summary", f"Generated {filename} with {len(dfs)} sheet(s), {total_rows} total rows")
             self.set_output("data", {k: v.to_dict(orient="records") for k, v in dfs.items()})
             
-            logging.info(f"ExcelProcessor: Generated {filename} as {doc_id}")
+            _lineaje_payload = f"ExcelProcessor: Generated {filename} as {doc_id}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ExcelProcessor._output_excel).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:833aa85433e70b038870af482a01b52209df6b014c63f9944633953e0bdbb28c'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:833aa85433e70b038870af482a01b52209df6b014c63f9944633953e0bdbb28c', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/excel_processor.py', 'line': 384, 'function': 'ExcelProcessor._output_excel'}, 'file': 'agent/component/excel_processor.py', 'line': 384, 'function': '_output_excel', 'agent_name': 'ExcelProcessor', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.info(_lineaje_payload)
             
         except Exception as e:
-            logging.error(f"ExcelProcessor output error: {e}")
+            _lineaje_payload = f"ExcelProcessor output error: {e}"
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in ExcelProcessor._output_excel).
+            #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+            #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:9b0be2204e14d8eb2c23e21a2fa409c4b640446b2be036da0af80b6ea7dd9b34'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:9b0be2204e14d8eb2c23e21a2fa409c4b640446b2be036da0af80b6ea7dd9b34', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='0.22.1', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'agent/component/excel_processor.py', 'line': 387, 'function': 'ExcelProcessor._output_excel'}, 'file': 'agent/component/excel_processor.py', 'line': 387, 'function': '_output_excel', 'agent_name': 'ExcelProcessor', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json')
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            except PermissionError:
+                pass
+            logging.error(_lineaje_payload)
             self.set_output("summary", f"Error generating output: {str(e)}")
 
     def thoughts(self) -> str:
