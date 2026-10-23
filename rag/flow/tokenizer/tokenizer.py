@@ -1,3 +1,21 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency (missing / broken: a pass-through client)."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    try:
+        h = _P(__file__).resolve().parent
+        _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+        _spec = _ilu.spec_from_file_location(n, _cand)
+        _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_m); return _m
+    except Exception:
+        _s.modules.pop(n, None)
+        return type('_lineaje_gr_unavailable', (), {'STUB_API': 999999, 'GuardrailUnavailableError': type('GuardrailUnavailableError', (PermissionError,), {}), 'SiteDescriptor': staticmethod(lambda *a, **k: None), 'new_interaction_id': staticmethod(lambda *a, **k: None), 'enforce': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_request': staticmethod(lambda _s, _p, *a, **k: _p), 'enforce_reply': staticmethod(lambda _s, _p, *a, **k: _p)})
+
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -72,14 +90,36 @@ class Tokenizer(ProcessBase):
                 elif isinstance(f, list):
                     txt += "\n".join(f)
             texts.append(re.sub(r"</?(table|td|caption|tr|th)( [^<>]{0,12})?>", " ", txt))
-        vts, c = embedding_model.encode([name])
+        _lineaje_payload = [name]
+        # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in Tokenizer._embedding).
+        #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+        #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+        #   Do not remove without review. site_id='site:sha256:33abdf1aee24ce5a6f9c7330572d49079e6fdd3aaa850bd5b00efc43ef447438'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:33abdf1aee24ce5a6f9c7330572d49079e6fdd3aaa850bd5b00efc43ef447438', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 75, 'function': 'Tokenizer._embedding'}, 'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 75, 'function': '_embedding', 'agent_name': 'Tokenizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+        try:
+            _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=75))
+        except _gr_client.GuardrailUnavailableError:
+            pass
+        vts, c = embedding_model.encode(_lineaje_payload)
         token_count += c
         tts = np.concatenate([vts[0] for _ in range(len(texts))], axis=0)
 
         @timeout(60)
         def batch_encode(txts):
             nonlocal embedding_model
-            return embedding_model.encode([truncate(c, embedding_model.max_length - 10) for c in txts])
+            _lineaje_payload = [truncate(c, embedding_model.max_length - 10) for c in txts]
+            # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the RAG pipeline to embedding model, before it is sent to the model (in Tokenizer.batch_encode).
+            #   Detected: this statement moves data from the RAG pipeline to embedding model with no runtime policy check (detection confidence: medium).
+            #   Decision: the Guardrail evaluates the policies enabled for this boundary; sensitive values in `_lineaje_payload` are masked in place; a policy violation is logged and the call continues (fail_mode=ALLOW_WITH_AUDIT). If the Guardrail is unreachable, the call continues unchanged.
+            #   Do not remove without review. site_id='site:sha256:eeff574899c43c7ee6fb2a16db21dda05da64806c17048409bd3d8207442c9db'
+            _gr_client = _lineaje_load_gr_client()
+            _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:eeff574899c43c7ee6fb2a16db21dda05da64806c17048409bd3d8207442c9db', phase='pre_model', boundary={'source': 'rag_pipeline', 'sink': 'embedding_model'}, fail_mode='ALLOW_WITH_AUDIT', source_type='rag_pipeline', destination_type='embedding_model', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 82, 'function': 'Tokenizer._embedding.batch_encode'}, 'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 82, 'function': 'batch_encode', 'agent_name': 'Tokenizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+            try:
+                _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=82)
+            except _gr_client.GuardrailUnavailableError:
+                pass
+            return embedding_model.encode(_lineaje_payload)
 
         cnts_ = np.array([])
         for i in range(0, len(texts), settings.EMBEDDING_BATCH_SIZE):
@@ -173,7 +213,20 @@ class Tokenizer(ProcessBase):
             self.callback(random.randint(1, 5) / 100.0 + 0.5 * (parts - 1), "Start embedding inference.")
 
             if from_upstream.name.strip() == "":
-                logging.warning("Tokenizer: empty name provided from upstream, embedding may be not accurate.")
+                _lineaje_payload = "Tokenizer: empty name provided from upstream, embedding may be not accurate."
+                # LINEAJE: runtime guardrail checks `_lineaje_payload` as it flows from the agent to the application log, before it is written to the log (in Tokenizer._invoke).
+                #   Detected: this statement moves data from the agent to the application log with no runtime policy check (detection confidence: high).
+                #   Decision: the Guardrail evaluates AI_DAT_SEC_010; sensitive values in `_lineaje_payload` are masked in place; a policy violation stops the call (fail_mode=BLOCK). If the Guardrail is unreachable, the call continues unchanged.
+                #   Do not remove without review. site_id='site:sha256:4a1931cb3bfefdffa5cb86b99c85a700763606d9c966f085f2c592c874b9a11e'
+                _gr_client = _lineaje_load_gr_client()
+                _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:4a1931cb3bfefdffa5cb86b99c85a700763606d9c966f085f2c592c874b9a11e', phase='log_emit', boundary={'source': 'log', 'sink': 'log'}, fail_mode='BLOCK', source_type='agent', destination_type='log', project='tree', organization='', project_name='ragflow', project_version='main', project_branch='main', components={'identity': {'app': {'name': 'ragflow', 'version': 'main', 'purl': 'pkg:github/anaghatestuser/ragflow@main?commit-id=427e0540cab683a591a5f4a65a0b38bf9ee008b7&commit-time=2025-12-25%2003%3A23%3A51%20%2B0000&build_file=pyproject.toml&repo_strategy=single-repo'}}, 'invocation': {'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 176, 'function': 'Tokenizer._invoke'}, 'file': 'rag/flow/tokenizer/tokenizer.py', 'line': 176, 'function': '_invoke', 'agent_name': 'Tokenizer', 'agent_name_source': 'inferred_from_class', 'not_on_graph': True})
+                try:
+                    _lineaje_payload = await __import__('asyncio').to_thread(lambda: _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json'))
+                except _gr_client.GuardrailUnavailableError:
+                    pass
+                except PermissionError:
+                    pass
+                logging.warning(_lineaje_payload)
 
             chunks, token_count = await self._embedding(from_upstream.name, chunks)
             self.set_output("embedding_token_consumption", token_count)
